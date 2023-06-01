@@ -1,0 +1,25 @@
+{%- set header = "Visual Graph Datasets" %}
+    {{ header|bold }}
+    {{ ('═' * header|length)|bold }}
+{% for name, data in metadata["datasets"].items() %}
+    {%- set path = os.path.join(datasets_path, name) -%}
+    {% if data.get('__exists', False) %}
+    {%- set status = '[✓]'|fg('green') -%}
+    {% else %}
+    {%- set status = '[ ]'|fg('yellow') -%}
+    {% endif %}
+
+    {%- set title = name + ' ' + status %}
+    {{ title|bold }}
+    {{ ('—' * (name|length + 4))|bold }}
+    {# This entire following section is conditionally only displayed if it exists locally -#}
+    {# At the moment this will display the location of the local file and the local version -#}
+    {% if data.get('__exists', False) -%}
+    Location: {{ data.get('__location', '--') }} ({{ data.get('__version', '--') }})
+    {% endif -%}
+
+    Version: {{ data.get("version", "--") }}
+    Total File Size: {{ '%0.2f' % (data.get("file_size", 0) / 1024**2) }} MB
+    Number of Elements: {{ data.get("num_elements", '--') }}
+    Description: {{ data.get("short_description", '--') }}
+{% endfor %}

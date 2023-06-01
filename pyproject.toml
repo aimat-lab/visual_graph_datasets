@@ -1,0 +1,49 @@
+[build-system]
+requires = ["poetry-core>=1.2.0b2"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "visual_graph_datasets"
+version = "0.12.1"
+description = "Datasets for the training of graph neural networks (GNNs) and subsequent visualization of attributional explanations of XAI methods"
+license = "MIT"
+authors = ["awa59kst120df <awa59kst120df@gmail.com>"]
+maintainers = ["awa59kst120df <awa59kst120df@gmail.com>"]
+readme = "README.rst"
+keywords = ["graph neural networks", "datasets", "explainable AI"]
+packages = [
+    { include = "visual_graph_datasets" }
+]
+include = [
+    "visual_graph_datasets/VERSION",
+]
+exclude = [
+    "dist",
+    "venv",
+    "visual_graph_datasets/experiments/assets",
+    "visual_graph_datasets/experiments/results",
+    "visual_graph_datasets/examples/results",
+]
+
+[tool.poetry.dependencies]
+python = ">=3.8"
+poetry-bumpversion = ">=0.3.0"
+click = ">=7.1.2"
+jinja2 = ">=3.0.3"
+numpy = ">=1.22.0"
+matplotlib = ">=3.5.3"
+psutil = ">=5.7.2"
+pytest = ">=7.2.0"
+orjson = ">=3.8.0"
+pyyaml = ">=0.6.0"
+pycomex = ">=0.8.0"
+networkx = ">=2.8.8"
+scipy = ">=1.10.1"
+imageio = ">=2.22.4"
+cairosvg = ">=2.5.0"
+rdkit = ">=2022.9.0"
+parsimonious = ">=0.10.0"
+
+[tool.poetry_bumpversion.file."visual_graph_datasets/VERSION"]
+search = "{current_version}"
+replace = "{new_version}"

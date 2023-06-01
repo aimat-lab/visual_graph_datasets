@@ -1,0 +1,6 @@
+---
+multi_line: |
+  This is a multiline string
+  The loader really really has to preserve the line breaks in this string literally!
+  And it is important that this string is exactly 3 lines long for the test case!
+single_line: This is just a normal single line string...

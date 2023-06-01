@@ -1,0 +1,15 @@
+---
+# -- BASIC CONFIGURATION --
+base:
+    datasets_path: "{{ datasets_path }}"
+
+# -- FILE SHARE PROVIDERS --
+# In this section it is possible to define multiple alternative locations for remote file share providers
+# the top-level name of each provider has to be a unique key which identifies that provider. This key can
+# then be used within the code / command line to switch to the usage of that provider.
+providers:
+    # This is the default provider which is maintained alongside this package.
+    main:
+        type: "nextcloud"
+        url: "https://bwsyncandshare.kit.edu/s/E3MynrfQsLAHzJC"
+
