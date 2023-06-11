@@ -1,16 +1,192 @@
 import os
+import math
+import tempfile
+
 import yaml
 import pytest
+import numpy as np
+import matplotlib as mpl
+import matplotlib.pyplot as plt
 
 import visual_graph_datasets.typing as tc
+from visual_graph_datasets.typing import assert_graph_dict
 from visual_graph_datasets.data import load_visual_graph_dataset
 from visual_graph_datasets.data import generate_visual_graph_dataset_metadata
 from visual_graph_datasets.data import load_visual_graph_dataset_metadata
 from visual_graph_datasets.data import load_visual_graph_dataset_expansion
 from visual_graph_datasets.data import load_visual_graph_element
+from visual_graph_datasets.data import VisualGraphDatasetWriter
+from visual_graph_datasets.data import VisualGraphDatasetReader
+from visual_graph_datasets.data import extract_graph_mask
 
 from .util import LOG
 from .util import ASSETS_PATH, ARTIFACTS_PATH
+
+
+def test_extract_graph_mask_basically_works():
+    """
+    05.06.23 - The ``extract_graph_mask`` function should take a graph dict and a node mask and then be able
+    to create a NEW graph dict from that original one, which only contains the masked sections.
+    """
+    graph = {
+        'node_indices': [0, 1, 2, 3, 4, 5],
+        'node_attributes': [[0], [0], [1], [0], [1], [1]],
+        'edge_indices': [
+            # The first 4 nodes build a star shape around "1"
+            [1, 0], [0, 1],
+            [1, 2], [2, 1],
+            [1, 3], [3, 1],
+            # Then the other two nodes are just connected some random way
+            [2, 4], [4, 2],
+            [5, 3], [3, 5],
+            [0, 4], [4, 0],
+        ],
+        'edge_attributes': [
+            [1], [1],
+            [1], [1],
+            [1], [1],
+            [1], [1],
+            [1], [1],
+            [1], [1],
+        ]
+    }
+    # The first four nodes (the star pattern) we would like to extract from this graph as it's own graph
+    # dict.
+    mask = np.array([1, 1, 1, 1, 0, 0])
+    sub_graph = extract_graph_mask(graph, mask)
+    # most importantly the result must be a valid graph dict aside from that the lowest hanging tests are
+    # just the correct shapes.
+    assert_graph_dict(sub_graph)
+    assert len(sub_graph['node_indices']) == 4
+    assert len(sub_graph['node_attributes']) == 4
+    assert len(sub_graph['edge_indices']) == 6
+
+
+def test_visual_graph_dataset_reader_subset_works():
+    """
+    02.06.23 - One feature which is sometimes important is to be able to only read a subset of the dataset
+    for example for testing purposes. this is being tested here
+    """
+    path = os.path.join(ASSETS_PATH, 'mock')
+
+    reader = VisualGraphDatasetReader(
+        path=path,
+        logger=LOG,
+        log_step=20,
+    )
+    index_data_map = reader.read(subset=50)
+    assert len(index_data_map) == 50
+
+
+def test_visual_graph_dataset_reader_works_with_chunking():
+    """
+    02.06.23 - This actually tests if the Reader instance can read a chunked dataset folder.
+    """
+    num_elements = 30
+    chunk_size = 10
+
+    with tempfile.TemporaryDirectory() as path:
+        writer = VisualGraphDatasetWriter(
+            path=path,
+            chunk_size=chunk_size,
+        )
+        for index in range(num_elements):
+            writer.write(
+                name=index,
+                metadata={'index': index},
+                figure=None,
+            )
+
+        reader = VisualGraphDatasetReader(
+            path=path,
+            logger=LOG,
+            log_step=100,
+        )
+        index_data_map = reader.read()
+        # Since we have just created this, we know how many element
+        assert len(index_data_map) != 0
+        assert len(index_data_map) == num_elements
+
+
+def test_visual_graph_dataset_reader_basically_works():
+    """
+    02.06.23 - The VisualGraphDatasetReader class is a new alternative to the load_visual_graph_dataset
+    function, which has become necessary because that function would become very bloated when we now also
+    have to add the chunking support to it...
+    The read_all method of the writer class should essentially return the index_data_map as the function
+    also does.
+    """
+    path = os.path.join(ASSETS_PATH, 'mock')
+
+    reader = VisualGraphDatasetReader(
+        path=path,
+        logger=LOG,
+        log_step=20,
+    )
+    index_data_map = reader.read()
+
+    assert isinstance(index_data_map, dict)
+    assert len(index_data_map) != 0
+    # For this mock dataset we know that there are 100 elements in it, so we can test if it
+    assert len(index_data_map) == 100
+    # Also we can check if every individual element was loaded correctly.
+    for index, data in index_data_map.items():
+        assert 'metadata' in data
+        assert 'metadata_path' in data
+        assert 'image_path' in data
+        tc.assert_graph_dict(data['metadata']['graph'])
+
+
+def test_visual_graph_dataset_writer_chunking_works():
+    """
+    02.06.23 - The most important feature of why the VisualGraphDatasetWriter class exists is the automatic
+    chunking of the dataset. Given a chunk size, the writer should automatically spread the dataset elements
+    into sub folders which is supposed to make the dataset more efficient for IO operations.
+    """
+    num_elements = 29
+    chunk_size = 10
+
+    with tempfile.TemporaryDirectory() as path:
+        writer = VisualGraphDatasetWriter(
+            path=path,
+            chunk_size=chunk_size,
+        )
+        for index in range(num_elements):
+            writer.write(
+                name=index,
+                metadata={'index': index},
+                figure=None,
+            )
+
+        elements = os.listdir(path)
+        print(elements)
+        # Since we are using chunking now, the actual dataset folder should on the top-level only contain
+        # the vastly smaller amount of chunk folders...
+        assert len(elements) == math.ceil(num_elements / chunk_size)
+
+
+def test_visual_graph_dataset_writer_basically_works():
+    """
+    02.06.23 - The VisualGraphDatasetWriter is a class which is supposed to wrap the behavior of creating
+    a new visual graph dataset folder. The write method can be used to commit a new element with a given
+    index to the folder.
+    """
+    num_elements = 100
+
+    with tempfile.TemporaryDirectory() as path:
+        writer = VisualGraphDatasetWriter(path)
+        for index in range(num_elements):
+            writer.write(
+                name=index,
+                metadata={'index': index},
+                figure=None,
+            )
+
+        files = os.listdir(path)
+
+        # Since we are not saving figures as well there should now be exactly the given number of files
+        # in that folder.
+        assert len(files) == num_elements
 
 
 def test_load_visual_graph_element_basically_works():

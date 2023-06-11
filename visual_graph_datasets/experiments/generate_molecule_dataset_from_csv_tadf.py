@@ -43,7 +43,7 @@ TARGET_COLUMN_NAMES: t.List[str] = ['splitting_energy', 'oscillator_strength', '
 # These parameters control aspects of the visual graph dataset creation process
 
 # The name given to the visual graph dataset folder which will be created.
-DATASET_NAME: str = 'bbbp'
+DATASET_NAME: str = 'tadf'
 # The width and height of the molecule visualization PNGs in pixels.
 IMAGE_WIDTH: int = 1000
 IMAGE_HEIGHT: int = 1000
@@ -61,7 +61,8 @@ DATASET_META: t.Optional[dict] = {
     # sampled from, what the input features look like, what the prediction target is etc...
     'description': (
         'A large dataset consisting of roughly half a million molecules annotated with properties '
-        'relevant to their...'
+        'relevant to their thermally activated delayed fluorescent (TADF) behavior. The dataset was '
+        'created in a large scale virtual screening application using DFT calculations.'
     ),
     # A list of informative strings (best case containing URLS) which are used as references for the
     # dataset. This could for example be a reference to a paper where the dataset was first introduced

@@ -10,16 +10,19 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-import visual_graph_datasets.typing as tc
+import visual_graph_datasets.typing as tv
+from visual_graph_datasets.data import DatasetWriterBase
+from visual_graph_datasets.data import extract_graph_mask
+from visual_graph_datasets.data import nx_from_graph
 from visual_graph_datasets.processing.base import ProcessingBase
 from visual_graph_datasets.visualization.base import layout_node_positions
 from visual_graph_datasets.visualization.base import create_frameless_figure
 from visual_graph_datasets.visualization.colors import visualize_color_graph
 from visual_graph_datasets.visualization.colors import colors_layout
+from visual_graph_datasets.generation.colors import graph_from_cogiles
+from visual_graph_datasets.generation.colors import graph_to_cogiles
 
 
-# TODO: Invent a string representation of color graphs...
-# TODO: Extend this class to have extra methods deal with the processing of that format then...
 class ColorProcessing(ProcessingBase):
 
     LAYOUT_STRATEGY_MAP = {
@@ -31,27 +34,34 @@ class ColorProcessing(ProcessingBase):
     DEFAULT_STRATEGY = 'colors'
 
     def process(self,
-                node_attributes: np.ndarray,
-                edge_indices: np.ndarray,
-                ) -> tc.GraphDict:
-        # This is an incredibly
+                value: tv.DomainRepr,
+                *args,
+                additional_graph_data: dict = {},
+                **kwargs
+                ) -> tv.GraphDict:
+        graph = graph_from_cogiles(value)
         graph = {
-            'node_indices': list(range(len(node_attributes))),
-            'node_attributes': node_attributes,
-            'edge_indices': edge_indices,
-            'edge_attributes': [[1] for _ in edge_indices]
+            **graph,
+            **additional_graph_data
         }
-
         return graph
 
+    def unprocess(self,
+                  graph: tv.GraphDict,
+                  *args,
+                  **kwargs) -> tv.DomainRepr:
+        value = graph_to_cogiles(graph)
+        return value
+
     def visualize_as_figure(self,
-                            node_attributes: np.ndarray,
-                            edge_indices: np.ndarray,
+                            value: tv.DomainRepr,
                             width: int = 1000,
                             height: int = 1000,
-                            layout_strategy: str = DEFAULT_STRATEGY
+                            layout_strategy: str = DEFAULT_STRATEGY,
+                            *args,
+                            **kwargs,
                             ) -> t.Tuple[plt.Figure, np.ndarray]:
-        g = self.process(node_attributes, edge_indices)
+        g = self.process(value)
         node_positions = layout_node_positions(
             g=g,
             layout_cb=self.LAYOUT_STRATEGY_MAP[layout_strategy],
@@ -69,6 +79,7 @@ class ColorProcessing(ProcessingBase):
         # coordinates of the figure image.
         node_positions = [[int(v) for v in ax.transData.transform((x, y))]
                           for x, y in node_positions]
+        node_positions = np.array(node_positions)
 
         return fig, node_positions
 
@@ -97,8 +108,7 @@ class ColorProcessing(ProcessingBase):
         return array
 
     def create(self,
-               node_attributes: np.ndarray,
-               edge_indices: np.ndarray,
+               value: tv.DomainRepr,
                index: int = 0,
                output_path: str = os.getcwd(),
                graph_labels: list = [],
@@ -106,20 +116,18 @@ class ColorProcessing(ProcessingBase):
                additional_graph_data: dict = {},
                width: int = 1000,
                height: int = 1000,
+               writer: t.Optional[DatasetWriterBase] = None,
+               *args,
+               **kwargs,
                ) -> None:
-        g = self.process(node_attributes, edge_indices)
+        g = self.process(value)
         g.update(additional_graph_data)
         fig, node_positions = self.visualize_as_figure(
-            node_attributes,
-            edge_indices,
+            value=value,
             width=width,
             height=height,
         )
         g['node_positions'] = node_positions
-
-        fig_path = os.path.join(output_path, f'{index}.png')
-        self.save_figure(fig, fig_path)
-        plt.close(fig)
 
         metadata = {
             **additional_metadata,
@@ -129,8 +137,20 @@ class ColorProcessing(ProcessingBase):
             'image_height': height,
             'graph': g,
         }
-        metadata_path = os.path.join(output_path, f'{index}.json')
-        self.save_metadata(metadata, metadata_path)
+
+        if writer is None:
+            fig_path = os.path.join(output_path, f'{index}.png')
+            self.save_figure(fig, fig_path)
+            plt.close(fig)
+
+            metadata_path = os.path.join(output_path, f'{index}.json')
+            self.save_metadata(metadata, metadata_path)
+        else:
+            writer.write(
+                name=int(index),
+                metadata=metadata,
+                figure=fig,
+            )
 
     def get_description_map(self) -> dict:
         return {

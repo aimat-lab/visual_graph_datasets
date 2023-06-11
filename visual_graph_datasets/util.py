@@ -184,7 +184,7 @@ def edge_importances_from_node_importances(edge_indices: np.ndarray,
 
         edge_importance = calc_cb(node_importance_i, node_importance_j)
         if ignore_with_zero:
-            edge_mask = ((node_importance_i != 0) and (node_importance_j != 0)).astype(int)
+            edge_mask = (node_importance_i != 0).astype(int) * (node_importance_j != 0).astype(int)
             edge_importance *= edge_mask
 
         edge_importances.append(edge_importance)

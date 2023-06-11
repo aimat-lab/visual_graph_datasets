@@ -259,7 +259,7 @@ Important
 - Started moving more experiment modules to the new pycomex functional api
 - Added an experiment module to process QM9 dataset into a visual graph dataset.
 
-0.13.0 - 30.05.2023
+0.13.0 - 11.06.2023
 -------------------
 
 Additions to the ``processing.molecules`` module. Added various new molecular node/features based on
@@ -272,3 +272,37 @@ RDKit computations.
 - LabuteASA contributions
 - Changed the default experiment ``generate_molecule_dataset_from_csv.py`` to now use these additional
   atom/node features for the default Processing implementation.
+
+Overhaul of the dataset writing and reading process. The main difference is that I added support for
+*dataset chunking*. Previously a dataset would consist of a single folder which would directly contain all
+the files for the individual dataset elements. For large datasets these folders would become very large and
+thus inefficient for the filesystem to handle. With dataset chunking, the dataset can be split into multiple
+sub folders that contain a max. number of elements each thus hopefully increasing the efficiency.
+
+- Added ``data.DatasetReaderBase`` class, which contains the base implementation of reading a dataset from
+  the persistent folder representation into the index_data_map. This class now supports the dataset
+  chunking feature.
+    - Added ``data.VisualGraphDatasetReader`` which implements this for the basic dataset format that
+      represents each element as a JSON and PNG file.
+- Added ``data.DatasetWriterBase`` class, which contains the base implementation of writing a dataset from
+  a data structure representation into the folder. This class now supports the dataset chunking feature.
+    - Added ``data.VisualGraphDatasetWriter`` which implements this for the basic dataset format where
+      a metadata dict and a mpl Figure instance are turned into a JSON and PNG file.
+- Changed the ``processing.molecule.MoleculeProcessing`` class to now also support a DatasetWriter instance
+  as an optional argument to make use of the dataset chunking feature during the dataset creation process.
+
+Introduction of COGILES (Color Graph Input Line Entry System) which is a method of specifying colored graphs
+with a simple human-readable string syntax, which is strongly inspired by SMILES for molecular graphs.
+
+- Added ``generate.colors.graph_from_cogiles``
+- Added ``generate.colors.graph_to_cogiles``
+
+
+
+Bugfixes
+
+- I think I finally solved the performance issue in ``generate_molecule_dataset_from_csv.py``. Previously
+  there was an issue where the avg write speed would rapidly decline for a large dataset, causing the
+  process to take way too long. I *think* the problem was the matplotlib cache in the end
+- Also changed ``visualize_graph_from_mol`` and made some optimizations there. It no longer relies on
+  the creation of intermediate files and no temp dir either, which shaved of a few ms of computational time.

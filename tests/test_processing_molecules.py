@@ -8,14 +8,17 @@ import subprocess
 import click
 import click.testing
 import numpy as np
+import matplotlib.pyplot as plt
 import visual_graph_datasets.typing as tc
 from visual_graph_datasets.processing.base import create_processing_module
+from visual_graph_datasets.processing.base import EncoderBase
 from visual_graph_datasets.processing.molecules import MoleculeProcessing
 from visual_graph_datasets.processing.molecules import crippen_contrib
 from visual_graph_datasets.processing.molecules import tpsa_contrib
 from visual_graph_datasets.processing.molecules import lasa_contrib
 from visual_graph_datasets.processing.molecules import gasteiger_charges
 from visual_graph_datasets.processing.molecules import estate_indices
+from visual_graph_datasets.visualization.molecules import visualize_molecular_graph_from_mol
 from visual_graph_datasets.testing import clear_files
 from rdkit import Chem
 from rdkit.Chem import rdMolDescriptors
@@ -27,6 +30,85 @@ from .util import ARTIFACTS_PATH
 
 SMILES = 'c1ccccc1'
 
+
+def test_molecule_processing_extract_works():
+    """
+    11.06.23 - MoleculeProcessing now implements the ``extract`` method which can be used to 
+    extract a sub structure from an existing graph dict representation of a molecule in the 
+    form of a SMILES string and a graph dict of just the sub structure
+    """
+    smiles = 'Cn1c(=O)c2c(ncn2C)n(C)c1=O' # has 14 atoms
+    
+    processing = MoleculeProcessing()
+    graph = processing.process(smiles)
+    assert len(graph['node_indices']) == 14
+    
+    mask = np.array([1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+    smiles_sub, graph_sub = processing.extract(graph, mask)
+    assert isinstance(smiles_sub, str)
+    assert len(smiles_sub) != 0
+    assert len(smiles_sub) != len(smiles)
+    
+    # Plotting the graph and the sub graph to visuall confirm that it works
+    fig, (ax, ax_sub) = plt.subplots(ncols=2, nrows=1, figsize=(20, 10))
+    ax.set_title('original molecule with extraction site marked')
+    node_positions, _ = visualize_molecular_graph_from_mol(
+        ax=ax,
+        mol=Chem.MolFromSmiles(smiles),
+        image_height=1000, image_width=1000,
+    )
+    ax_sub.set_title('extracted section')
+    visualize_molecular_graph_from_mol(
+        ax=ax_sub,
+        mol=Chem.MolFromSmiles(smiles_sub),
+        image_width=1000, image_height=1000,
+    )
+    for index in graph_sub['node_indices_original']:
+        ax.scatter(*node_positions[index], color='lightgray', s=500, zorder=-1)
+    fig_path = os.path.join(ARTIFACTS_PATH, 'molecule_processing_extract_works')
+    fig.savefig(fig_path)
+
+
+def test_molecule_processing_unprocess_works():
+    """
+    11.06.23 - MoleculeProcessing now implements the ``unprocess`` method, which is supposed to 
+    take a graph dict representation as an argument and return it's corresponding SMILES 
+    representation.
+    """
+    smiles = 'Cn1c(=O)c2c(ncn2C)n(C)c1=O'
+    
+    processing = MoleculeProcessing()
+    graph = processing.process(smiles)
+    unprocessed = processing.unprocess(graph, clear_aromaticity=False)
+    # This is the most effective check we can perform, which effectively checks if the 
+    # if the smiles representation stays the same through the process -> unprcess chain.
+    assert smiles == unprocessed
+
+
+def test_molecule_processing_symbol_encoder_works():
+    """
+    11.06.23 - MoleculeProcessing should now have an attribute symbol_encoder which is an EncoderBase 
+    derived object that can be used to encode and decode between a atom symbol string and the one-hot 
+    representation as a numeric feature vector.
+    """
+    processing = MoleculeProcessing()
+    assert processing.symbol_encoder is not None
+    assert isinstance(processing.symbol_encoder, EncoderBase)
+    
+    value = 'C'
+    
+    # Since the interface of this standard class can change we only make the most simple 
+    # check here we ensure that the result is in fact a non-empty vector
+    symbol_encoder = processing.symbol_encoder
+    encoded = symbol_encoder.encode('C')
+    assert isinstance(encoded, list)
+    assert len(encoded) != 0
+    
+    # We only perform a brief individual check here to confirm that the encoding and 
+    # decoding acutally results in the exact original value.
+    decoded = symbol_encoder.decode(encoded)
+    assert decoded == value
+    
 
 def test_molecule_processing_derived_atom_features_working():
 

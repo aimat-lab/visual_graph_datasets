@@ -11,6 +11,7 @@ import click
 import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib as mpl
+import networkx as nx
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 
 import visual_graph_datasets.typing as tv
@@ -18,6 +19,8 @@ from visual_graph_datasets.data import NumericJsonEncoder
 from visual_graph_datasets.util import TEMPLATE_ENV
 from visual_graph_datasets.util import JSON_LIST, JSON_DICT, JSON_ARRAY
 from visual_graph_datasets.util import sanitize_indents
+from visual_graph_datasets.data import VisualGraphDatasetWriter
+from visual_graph_datasets.data import extract_graph_mask, nx_from_graph
 
 
 def identity(value: t.Any) -> t.Any:
@@ -26,6 +29,97 @@ def identity(value: t.Any) -> t.Any:
 
 def list_identity(value: t.Any, dtype: type = float) -> t.Any:
     return [dtype(value)]
+
+
+class Scaler:
+
+    def __init__(self,
+                 min_value: float,
+                 max_value: float,
+                 dtype: type = float):
+        self.min_value = min_value
+        self.max_value = max_value
+        self.dtype = dtype
+
+    def __call__(self, value: t.Any, *args, **kwargs) -> t.List[float]:
+        value_scaled = (value - self.min_value) / (self.max_value - self.min_value)
+        return [value_scaled]
+
+
+class EncoderBase: 
+    """
+    This is the abstract base class for the implementation of attribute processing encoder 
+    objects.
+
+    Such encoder objects have the function of effectively encoding some kind of non-numeric 
+    property into a vector of numeric values, which unlike the orignal format is suitable as 
+    part of the input for a machine learning model.
+    
+    Any encoder implementation has to implement the following two methods:
+    
+    - ``encode``: This method should take the original value to be encoded as the argument and 
+      then return a list of float values, which represents the encoded vector.
+    - ``decode``: This method is the exact inverse functionality. It should take the list 
+      of numeric values as the input and return the equivalent original value whatever that 
+      may be.
+      
+    Each encoder object is callable by default through an implementation of the __call__ method, 
+    which internally uses the implementation of the ``encode`` method.
+    """
+    
+    def __call__(self, value: t.Any, *args, **kwargs) -> t.List[float]:
+        return self.encode(value, *args, **kwargs)
+    
+    def encode(self, value: t.Any, *args, **kwargs) -> t.List[float]:
+        raise NotImplemented()
+    
+    def decode(self, encoded: t.List[float]) -> t.Any:
+        raise NotImplemented()
+
+
+class OneHotEncoder(EncoderBase):
+    """
+    This is the specific implementation of an attribute Encoder class for the process of 
+    OneHotEncoding elements of different types.
+    
+    The one-hot encoder is constructed by supplying a list of elements which should be encoded. 
+    This may be any data type or structure, which implements the __eq__ method, such as strings 
+    for example. The encoded vector representation of a single element will have as many elements 
+    as the provided list of elements, where all values are zero except for the position of the 
+    that matches the given element through an equality check.
+    
+    :param values: A list of elements which each will be checked when encoding an element
+    """
+    def __init__(self,
+                 values: t.List[t.Any],
+                 add_unknown: bool = False,
+                 unknown: t.Any = 'H',
+                 dtype: type = float):
+        self.values = values
+        self.add_unknown = add_unknown
+        self.unknown = unknown
+        self.dtype = dtype
+
+    def __call__(self, value: t.Any, *args, **kwargs) -> t.List[float]:
+        return self.encode(value)
+
+    def encode(self, value: t.Any, *args, **kwargs) -> t.List[float]:
+        one_hot = [1. if v == self.dtype(value) else 0. for v in self.values]
+        if self.add_unknown:
+            one_hot += [0. if 1 in one_hot else 1.]
+
+        return one_hot
+    
+    def decode(self, encoded: t.List[float]) -> t.Any:
+        for one_hot, value in zip(encoded, self.values):
+            if one_hot:
+                return value
+            
+        # If the previous loop has failed to return anything then we can assume that the 
+        # value is the unknown and we will instead return the "unkown" value provided in 
+        # the constructor.
+        return self.unknown
+
 
 
 class ProcessingError(Exception):
@@ -139,11 +233,142 @@ class ProcessingBase(click.MultiCommand):
             self.__code__ = inspect.getsource(self.__class__)
         except (AttributeError, TypeError):
             pass
+        
+    def extract(self,
+                graph: tv.GraphDict,
+                mask: np.ndarray,
+                process_kwargs: dict = {},
+                unprocess_kwargs: dict = {},
+                **kwargs) -> t.Tuple[tv.DomainRepr, tv.GraphDict]:
+        """
+        Given a valid GraphDict representation ``graph`` and a binary node ``mask`` array, this method will 
+        return the subgraph that is defined through that mask as a tuple of it's domain representation and 
+        it's *canonical* graph dict representation.
+        
+        This method is implemented in a graph type agnostic manner and only assumes that specific implementations 
+        for the ``process`` and ``unprocess`` methods exist. The basic procedure is to first extract the 
+        the sub graph solely on the basis of the given graph dict and then ``unprocess`` that extracted sub graph 
+        dict to obtain it's domain representation. This domain representation is then again subjected to ``process`` 
+        to obtain the canonical graph dict representation of it. In the end a graph isomorphism matching is 
+        performed to reassociate the extracted graph's node indices with the node indices of the original graph.
+
+        :param graph: The graph from which a smaller subgraph should be extracted into it's own 
+            individual representation
+        :type graph: tv.GraphDict
+        :param mask: A binary array (integer or boolean) of the shape (N, ) where N is the number of nodes in 
+            the given graph
+        :type mask: np.ndarray
+        :param process_kwargs: A dict with additional options for the ``process`` method
+        :param unprocess_kwargs: A dict with additional options for the ``unprocess`` method
+        
+        :return: _description_
+        :rtype: t.Tuple[tv.DomainRepr, tv.GraphDict]
+        """
+        # Given a graph dict and a binary node mask, this function will return a graph dict which contains
+        # just the sub graph section of the original graph that was defined by the mask.
+        # Most importantly, this sub graph dict will contain an additional field "node_indices_original"
+        # This sub graph will contain all the additional node and edge specific properties which the
+        # original graph had as well for those masked nodes.
+        # which is very important for us here. that dictionary will map the new graph indices to the graph
+        # indices which the sub graph originally had in the original graph!
+        sub_graph = extract_graph_mask(graph, mask, **process_kwargs)
+
+        # Then we use the "unprocess" method to turn that sub graph into a domain representation and
+        # immediately turn it back into graph dict using the "process" method. This should(!) result in
+        # essentially exactly the same graph. The only important difference being that the indexing scheme
+        # and order of the nodes is not different - it is *canonical* w.r.t. to the domain specific
+        # graph encoding, which is important for the future handling of that graph.
+        value = self.unprocess(sub_graph, **unprocess_kwargs)
+        sub_graph_canon = self.process(value)
+
+        # Now the problem we have is that with that newly processed graph dict we don't have the mapping
+        # of the new indices to the indices within the original graph! To fix that we will perform an
+        # isomorphism matching between the two sub graph representations.
+        g_sub = nx_from_graph(sub_graph)
+        g_canon = nx_from_graph(sub_graph_canon)
+        matcher = nx.isomorphism.GraphMatcher(
+            g_canon, g_sub,
+            node_match=lambda a, b: self.node_match(a['node_attributes'], b['node_attributes']),
+            edge_match=lambda a, b: self.edge_match(a['edge_attributes'], b['edge_attributes']),
+        )
+        matcher.initialize()
+        matcher.is_isomorphic()
+
+        sub_graph_canon['node_indices_original'] = np.array([
+            sub_graph['node_indices_original'][matcher.mapping[i]] for i in sub_graph_canon['node_indices']
+        ])
+
+        node_keys = [key for key in graph.keys() if key.startswith('node') if key != 'node_indices']
+
+        for key in node_keys:
+            sub_graph_canon[key] = np.array([
+                graph[key][sub_graph_canon['node_indices_original'][i]]
+                for i in sub_graph_canon['node_indices']
+            ])
+            
+        # TODO: Implement the transfer of the edge based properties as well.
+            
+        # All "graph" global attributes of the graph we will copy as they are. None of the graph 
+        # restructuring we have done here will change anything for these values as they are supposed 
+        # to be global attributes of the graph anyways.
+        graph_keys = [key for key in graph.keys() if key.startswith('graph')]
+        for key in graph_keys:
+            sub_graph_canon[key] = graph[key]
+
+        return value, sub_graph_canon
 
     # -- to be implemented --
     # All of these methods have to be implemented by subclasses. They need to contain the domain specific
     # implementations if how to actually process domain-specific graph representations into the graph
     # dict / visualizations.
+    
+    def node_match(self,
+                   node_attributes_1: np.ndarray, 
+                   node_attributes_2: np.ndarray
+                   ) -> bool:
+        """
+        Given a two np arrays ``node_attributes_1`` and ``node_attributes_2``, this method should return 
+        the boolean indicator of whether these two represent node attributes of the same *node type*.
+
+        The default implementation of this method simply checks if the two arrays are exactly the same, but 
+        this may not always make sense, since it is only about the node *type*. Two nodes can be of the same 
+        type but still possess other additional parameters, in which case the the result of the default 
+        implementation would be wrong. Thus it is encouraged to provide a custom implementation for this 
+        method for every specific graph type.
+
+        :param node_attributes_1: The array of numeric properties for the first node
+        :type node_attributes_1: np.ndarray
+        :param node_attributes_2: The array of numeric properties for the second node
+        :type node_attributes_2: np.ndarray
+        
+        :return: bool
+        :rtype: bool
+        """
+        return np.isclose(node_attributes_1, node_attributes_2).all()
+    
+    def edge_match(self,
+                   edge_attributes_1: np.ndarray,
+                   edge_attributes_2: np.ndarray,
+                   ) -> bool:
+        """
+        Given a two np arrays ``edge_attributes_1`` and ``edge_attributes_2``, this method should return 
+        the boolean indicator of whether these two represent edge attributes of the same *edge type*.
+
+        The default implementation of this method simply checks if the two arrays are exactly the same, but 
+        this may not always make sense, since it is only about the edge *type*. Two edges can be of the same 
+        type but still possess other additional parameters, in which case the the result of the default 
+        implementation would be wrong. Thus it is encouraged to provide a custom implementation for this 
+        method for every specific graph type.
+
+        :param edge_attributes_1: _description_
+        :type edge_attributes_1: np.ndarray
+        :param edge_attributes_2: _description_
+        :type edge_attributes_2: np.ndarray
+        :return: _description_
+        :rtype: bool
+        """
+        return np.isclose(edge_attributes_1, edge_attributes_2).all()
+    
 
     def process(self,
                 value: tv.DomainRepr,
@@ -175,6 +400,22 @@ class ProcessingBase(click.MultiCommand):
             that will be added as additional attributes to the graph dict
 
         :returns: The graph dict representation of the given element
+        """
+        raise NotImplemented()
+
+    def unprocess(self,
+                  graph: tv.GraphDict,
+                  **kwargs,
+                  ) -> tv.DomainRepr:
+        """
+        This method is supposed to implement the inverse functionality to the "process" method, namely the 
+        conversion of an existing graph dict representation back into a domain representation.
+
+        :param graph: The graph to be converted into the domain representation
+        :type graph: tv.GraphDict
+        
+        :return: The domain representation that is equivalent to the given graph dict.
+        :rtype: tv.DomainRepr
         """
         raise NotImplemented()
 
@@ -232,6 +473,7 @@ class ProcessingBase(click.MultiCommand):
                output_path: str,
                additional_graph_data: dict,
                additional_metadata: dict,
+               writer: t.Optional[VisualGraphDatasetWriter] = None,
                *args,
                **kwargs,
                ) -> tv.MetadataDict:
@@ -259,6 +501,11 @@ class ProcessingBase(click.MultiCommand):
             that will be added as additional attributes to the graph dict
         :param additional_metadata: A dictionary with string keys and arbitrary (json encodable) values
             that will be added as additional attributes to the metadata dict
+        :param writer: There is the option to provide an instance of VisualGraphDatasetWriter to the
+            create method. If that happens then the create method should use that writer instance to
+            persistently save the files instead. This may be important because the writer instance is
+            optimized to write large datasets more efficiently by implementing folder chunking under the
+            hood.
 
         :returns: metadata dict
         """

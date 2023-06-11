@@ -114,8 +114,10 @@ def draw_image(ax: plt.Axes,
                remove_ticks: bool = True,
                ) -> None:
     """
-    Given the path ``image_path`` of a suitable image file and a matplotlib axes canvas ``ax``, this function will
-    draw the image onto the canvas.
+    Given the path ``image_path`` of a suitable image file and a matplotlib axes canvas ``ax``, this
+    function will draw the image onto the canvas.
+
+
     """
     image = imread(image_path)
     extent = [0, image.shape[0], 0, image.shape[1]]

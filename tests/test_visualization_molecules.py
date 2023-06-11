@@ -12,6 +12,8 @@ from .util import ASSETS_PATH, ARTIFACTS_PATH
 
 
 def test_visualize_molecular_graph_basically_works():
+    np.set_printoptions(precision=0)
+
     smiles = 'CN1C=NC2=C1C(=O)N(C(=O)N2C)C'
     mol = mol_from_smiles(smiles)
     num_atoms = len(mol.GetAtoms())
@@ -30,6 +32,10 @@ def test_visualize_molecular_graph_basically_works():
     assert isinstance(svg_string, str)
     assert len(svg_string) != 0
 
+    # This is necessary...
+    node_positions = [[v for i, v in enumerate(ax.transData.transform((x, y)))]
+                      for x, y in node_positions]
+
     # Here we are going to save it as a PNG file and then afterwards load it again
     # using imread to emulate the process of visualization as best as possible
     vis_path = os.path.join(ARTIFACTS_PATH, 'molecule_visualization.png')
@@ -38,7 +44,7 @@ def test_visualize_molecular_graph_basically_works():
 
     fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(10, 10))
     image = imread(vis_path)
-    ax.imshow(image)
+    ax.imshow(image, extent=[0, image_width, 0, image_height])
 
     # to make sure the positions are correct we are going to scatter a small dot to every position and can
     # then check in the image if they are at the correct atom positions.
