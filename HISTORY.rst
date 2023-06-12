@@ -297,8 +297,6 @@ with a simple human-readable string syntax, which is strongly inspired by SMILES
 - Added ``generate.colors.graph_from_cogiles``
 - Added ``generate.colors.graph_to_cogiles``
 
-
-
 Bugfixes
 
 - I think I finally solved the performance issue in ``generate_molecule_dataset_from_csv.py``. Previously
@@ -306,3 +304,13 @@ Bugfixes
   process to take way too long. I *think* the problem was the matplotlib cache in the end
 - Also changed ``visualize_graph_from_mol`` and made some optimizations there. It no longer relies on
   the creation of intermediate files and no temp dir either, which shaved of a few ms of computational time.
+
+
+0.13.1 - 12.06.2023
+-------------------
+
+- Added the new module ``graph.py`` which will contain all GraphDict related utility functions in the future
+  - Added a function to copy graph dicts
+  - Added a function to create node adjecency matrices for graph dicts
+  - Added a function to add graph edges
+  - Added a function to remove graph edges

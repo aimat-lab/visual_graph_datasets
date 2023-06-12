@@ -20,6 +20,16 @@ CYAN = (0., 1., 1.)
 BLUE = (0., 0., 1.)
 MAGENTA = (1., 0., 1.)
 
+DEFAULT_COLORS = [
+    GRAY,
+    RED,
+    GREEN,
+    BLUE,
+    YELLOW,
+    CYAN,
+    MAGENTA,
+]
+
 
 def make_star_motif(inner_color: tc.ColorList,
                     outer_color: tc.ColorList,
