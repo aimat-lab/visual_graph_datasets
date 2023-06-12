@@ -314,3 +314,19 @@ Bugfixes
   - Added a function to create node adjecency matrices for graph dicts
   - Added a function to add graph edges
   - Added a function to remove graph edges
+
+0.13.2 - 12.06.2023
+-------------------
+
+- Fixed a bug where ``ColorProcesing.create`` would not save the name or the domain representation 
+
+0.13.3 - 12.06.2023
+-------------------
+
+- Fixed a bug where the COGILES decoding procedure produced graph dicts with "edge_attributes" arrays of 
+  the incorrect data type and shape.
+
+0.13.4 - 12.06.2023
+-------------------
+
+- Fixed a bug where the CogilesEncoder duplicated edges in some very weird edge cases!

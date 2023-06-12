@@ -217,23 +217,6 @@ The cogiles "R-1RR-1.RR(GG)R", for example, defines two separate graphs.
 # with each other with regex like syntax here.
 cogiles_grammar = parsimonious.Grammar(
     r"""
-    graph           = (branch_node / anchor_node / break_node / node)*
-    
-    branch_node     = (break_node / anchor_node / node) branch+ anchor*
-    anchor_node     = (break_node / node) anchor+
-    break_node      = break node
-    
-    branch          = lpar (branch_node / anchor_node / node)* rpar
-    lpar            = "("
-    rpar            = ")"
-    
-    break           = "."
-    anchor          = ~r"-[\d]+"
-    node            = ~r"[RGBYMCH]"
-    """
-)
-cogiles_grammar = parsimonious.Grammar(
-    r"""
     graph           = (branch / node / anchor / break)*
 
     branch_node     = (break_node / node) branch+
@@ -281,7 +264,26 @@ NODE_ATTRIBUTE_TYPE_MAP = {
 
 # Parsimonious
 class CogilesVisitor(parsimonious.NodeVisitor):
+    """
+    This class is a visitor for the parsimonious token tree that results from a parsing of the 
+    COGILES string grammar.
+    
+    The COGILES grammar defines a system of encoding "color graphs" as a simple and human-readable string 
+    format. This grammer is being parsed into a token tree by the parsimonious language and ultimately 
+    a visitor instance of this class is then used to process that token tree into the actual graph dict 
+    representation of the graph that is represented by the original COGILES string.
+    
+    To convert a COGILES string, first use the ``visit`` method on the token tree and then use the 
+    ``process`` method which will return the resulting graph dict.
+    
+    ..code-block:
+    
+        tree = cogiles_grammar.parse(value)
+        visitor = CogilesVisitor()
+        visitor.visit(tree)
+        graph = visitor.process()
 
+    """
     def __init__(self, *args, **kwargs):
         super(CogilesVisitor, self).__init__(*args, **kwargs)
         self.node_index = 0
@@ -300,6 +302,12 @@ class CogilesVisitor(parsimonious.NodeVisitor):
         self.graph = {}
 
     def process(self) -> tc.GraphDict:
+        """
+        Returns the graph dict representation of the given token tree that was previously visited 
+        by this visitor instance.
+        
+        :returns: The graph dict representation
+        """
         node_indices = list(self.index_node_map.keys())
         node_attributes = [self.get_node_attributes(self.index_node_map[i]) for i in node_indices]
 
@@ -310,17 +318,26 @@ class CogilesVisitor(parsimonious.NodeVisitor):
         for i, j in self.anchor_edges:
             edge_indices += [[i, j], [j, i]]
 
-        edge_attributes = [1 for e in edge_indices]
-
+        # 12.06.23 - There was a bug here where we used the edge attributes directly which resulted in the 
+        # numpy array being one dimensional instead of two-dimensional which ultimately led to problems with the 
+        # models; they expect it to be 2d.
+        edge_attributes = [[1.0] for e in edge_indices]
         graph = {
-            'node_indices':         np.array(node_indices),
-            'node_attributes':      np.array(node_attributes),
-            'edge_indices':         np.array(edge_indices),
-            'edge_attributes':      np.array(edge_attributes),
+            'node_indices':         np.array(node_indices, dtype=int),
+            'node_attributes':      np.array(node_attributes, dtype=float),
+            'edge_indices':         np.array(edge_indices, dtype=int),
+            'edge_attributes':      np.array(edge_attributes, dtype=float),
         }
         return graph
 
     def get_node_attributes(self, node):
+        """
+        Given a token tree Node object ``node`` which represents a "node" token of the cogiles grammar, this  
+        method does returns the appropriate node attributes vector which belongs the the corresponding node type 
+        that is represented by hat node.
+        
+        :returns: a list of float values representing the node attributes vector for the node 
+        """
         node_type = str(node.text)
         return NODE_TYPE_ATTRIBUTE_MAP[node_type]
 
@@ -355,13 +372,9 @@ class CogilesVisitor(parsimonious.NodeVisitor):
         self.node_index += 1
         return node_index
 
-    def visit_break_node(self, node, visited_children):
-        node_index = squeeze_list(visited_children[1])
-        del self.node_sequence_map[node_index]
-
-        return node_index
-
     def visit_break(self, node, visited_children):
+        # We set this flag, so that the node which is parsed immediately after this break token 
+        # knows that it should not form a connection with the previous node.
         self.is_break = True
         return True
 
@@ -374,41 +387,6 @@ class CogilesVisitor(parsimonious.NodeVisitor):
             self.anchor_edges.append((self.anchor_map[anchor_index], node_index))
 
         return anchor_index
-
-    def visit_anchor_node(self, node, visited_children):
-        node_index = squeeze_list(visited_children[0])
-        anchor_indices = visited_children[1:]
-        anchor_indices = [v[0] for v in anchor_indices]
-
-        for anchor_index in anchor_indices:
-            if anchor_index not in self.anchor_map:
-                self.anchor_map[anchor_index] = node_index
-            else:
-                self.anchor_edges.append((self.anchor_map[anchor_index], node_index))
-
-        return node_index
-
-    def visit_branch_node(self, node, visited_children):
-        node_index = squeeze_list(visited_children[0])
-        branches = visited_children[1]
-        anchor_indices = visited_children[2]
-
-        for branch in branches:
-            if not isinstance(branch, list):
-                branch = [branch]
-
-            branch_start_index = branch[0]
-            self.node_sequence_map[branch_start_index] = node_index
-
-        for anchor_index in anchor_indices:
-            if anchor_index not in self.anchor_map:
-                self.anchor_map[anchor_index] = node_index
-            else:
-                self.anchor_edges.append((self.anchor_map[anchor_index], node_index))
-
-        self.prev_node = node_index
-
-        return node_index
 
     def generic_visit(self, node, visited_children):
         """ The generic visit method. """
@@ -534,10 +512,21 @@ class CogilesEncoder:
         # To process the current node at hand is the easy part. We just have to map the graph attribute
         # vector back into the corresponding node type string.
         value: str = self.node_type_from_attributes(self.node_attributes[node_index])
-        # If this node that we are currently looking at is connected to more than one node than we are
-        # taking a pre-caution here and pre-emptively attach an anchor to it which may or may not be
+        
+        # The neighbors we can simply be determined from the corresponding row of the adjacency matrix. 
+        # We split the neighbors here into those neighbors that are attached to an anchor index and those 
+        # who are not, because in the further process there are multiple instances where this distinction 
+        # is needed.
+        neighbors = sorted([i for i, v in enumerate(self.node_adjacency[node_index, :]) if v])
+        neighbors_anchor = [ni for ni in neighbors if ni in self.index_anchor_map]
+        neighbors_normal = [ni for ni in neighbors if ni not in self.index_anchor_map]
+        
+        # If this node that we are currently looking at is connected to more than one NON-ANCHORED node than 
+        # we are taking a pre-caution here and pre-emptively attach an anchor to it which may or may not be
         # used in the future.
-        num_edges = sum(self.node_adjacency[node_index, :])
+        # These connections to neighboring non-anchored nodes can really easily be determined by the length 
+        # of the corresponding neighbors list.
+        num_edges = len(neighbors_normal)
         if num_edges > 1:
             # This method will return a new anchoring string that we'll just add right behind the
             # current node type string.
@@ -545,14 +534,13 @@ class CogilesEncoder:
 
         # But then comes the more difficult part where we have to recursively process the rest of the
         # connected graph structure.
-
-        # All the neighboring node indices can easily be fetched from looking at the corresponding row
-        # of the adjacency matrix.
-        neighbors = sorted([i for i, v in enumerate(self.node_adjacency[node_index, :]) if v])
-        neighbors = [ni for ni in neighbors if ni in self.index_anchor_map] + \
-                    [ni for ni in neighbors if ni not in self.index_anchor_map]
-
-        for neighbor_index in neighbors:
+        
+        # Note: One might ask themselves why we are iterating over this weird sum of both of the split 
+        # neighbor lists here instead of "neighbors" directly since both of these should amount to essentially 
+        # the same list. The reason is the ordering! By doing it like this, we iterate all of the anchor nodes 
+        # first which makes it so that we pre-load all of the anchor connections in the resulting string before 
+        # starting the branching connections.
+        for neighbor_index in neighbors_anchor + neighbors_normal:
 
             # We modify the node_adjacency matrix here to effectively delete the connection we have just
             # processed so that this connection will not be considered in the future when gathering the
@@ -585,6 +573,7 @@ class CogilesEncoder:
                 value += f'({self.encode_branch(neighbor_index)})'
 
         self.node_visited[node_index] = True
+        
         return value
 
     def node_type_from_attributes(self, attributes: np.array) -> str:

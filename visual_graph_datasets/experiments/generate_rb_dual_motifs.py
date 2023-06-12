@@ -59,10 +59,10 @@ from visual_graph_datasets.visualization.importances import plot_edge_importance
 
 # == DATASET PARAMETERS ==
 DATASET_NAME: str = 'rb_dual_motifs'
-NUM_ELEMENTS_RAW: int = 20_000
-NUM_ELEMENTS: int = 5_000
+NUM_ELEMENTS_RAW: int = 50_000
+NUM_ELEMENTS: int = 10_000
 COLORS: t.List[list] = [
-    GRAY,
+    GRAY, GRAY,
     RED,
     GREEN,
     BLUE,
@@ -70,8 +70,8 @@ COLORS: t.List[list] = [
     CYAN,
     YELLOW,
 ]
-NUM_NODES_RANGE = (20, 50)
-NUM_ADDITIONAL_EDGES_RANGE = (3, 6)
+NUM_NODES_RANGE = (15, 40)
+NUM_ADDITIONAL_EDGES_RANGE = (3, 10)
 VALUE_MOTIF_MAP = {
     -2: make_star_motif(YELLOW, BLUE, k=3),
     -1: make_ring_motif(GREEN, BLUE, k=2),
@@ -82,12 +82,13 @@ VALUE_MOTIF_NX_MAP = {
     key: nx_from_graph(value)
     for key, value in VALUE_MOTIF_MAP.items()
 }
-NOISE_MAGNITUDE: float = 0.4
+NOISE_MAGNITUDE: float = 0.25
 
 # == EVAL PARAMETERS ==
 NUM_BINS: int = 100
 LOG_STEP: int = 100
 __DEBUG__ = True
+__TESTING__ = False
 
 
 @Experiment(base_path=folder_path(__file__),
@@ -95,6 +96,10 @@ __DEBUG__ = True
             glob=globals())
 def experiment(e: Experiment):
     e.log('generating rb dual motifs regression dataset...')
+
+    if __TESTING__:
+        e.NUM_ELEMENTS_RAW = 1000
+        e.NUM_ELEMENTS = 100
 
     # First step is to generate a bunch of graphs
     graphs: t.List[tv.GraphDict] = []
@@ -173,15 +178,19 @@ def experiment(e: Experiment):
 
     # Now that we have generated a sufficient number of graphs we can sample a much smaller 
     # number of those to achieve the desired target value distribution
-    bin_indices = np.digitize(values, bins[:-2], right=True)
-    weights = np.array([1/(hist[index]+1e-6) for graph, index in zip(graphs, bin_indices)])
+    #bin_indices = np.digitize(values, bins[:-2], right=True)
+    bin_indices = np.searchsorted(bins[:-2], values, side='left')
+    # print(len(bins), len(bins[:-1]), len(bins[:-2]))
+    # print(max(bin_indices), min(bin_indices))
+    weights = np.array([1/(hist[index-1]) if hist[index] >= 10 else 0 
+                        for graph, index in zip(graphs, bin_indices)])
     weights = weights / np.sum(weights)
     indices_sampled = np.random.choice(indices, size=NUM_ELEMENTS, replace=True, p=weights)
     graphs_sampled = [graphs[i] for i in indices_sampled]
     
     values_sampled = [graph['graph_labels'][0] for graph in graphs_sampled]
     fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(10, 10))
-    ax.hist(values_sampled, bins=int(NUM_BINS/2), color='lightgray')
+    ax.hist(values_sampled, bins=2*NUM_BINS, color='lightgray')
     fig.savefig(os.path.join(e.path, 'distribution.pdf'))
     
     # And finally after having obtained a list of graphs which show the desired uniform distribution 
@@ -220,14 +229,16 @@ def experiment(e: Experiment):
                 calc_cb=lambda v1, v2: np.logical_and(v1, v2).astype(float)
             )
             graph['node_positions'] = node_positions
+            if 'node_adjacency' in graph:
+                del graph['node_adjacency']
             
             metadata = {
-                'index': index,
-                'name': cogiles,
-                'target': target,
-                'graph': graph,
+                'index':    index,
+                'name':     cogiles,
+                'value':    cogiles,
+                'target':   target,
+                'graph':    graph,
             }
-            
             
             writer.write(
                 name=index,

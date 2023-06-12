@@ -24,7 +24,11 @@ from visual_graph_datasets.generation.colors import graph_to_cogiles
 
 
 class ColorProcessing(ProcessingBase):
-
+    """
+    This processing class can be used for colored graphs. These are graphs whose node attributes consist of 3 
+    values which represent an RGB color code for the color associated with each node. These graphs are undirected 
+    and do not have edge attributes.
+    """
     LAYOUT_STRATEGY_MAP = {
         'spring': nx.spring_layout,
         'colors': colors_layout,
@@ -132,6 +136,8 @@ class ColorProcessing(ProcessingBase):
         metadata = {
             **additional_metadata,
             'index': int(index),
+            'name': value,
+            'value': value,
             'target': graph_labels,
             'image_width': width,
             'image_height': height,
