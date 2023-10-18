@@ -584,7 +584,6 @@ class MoleculeProcessing(ProcessingBase):
         else:
             smiles = value
             mol = Chem.MolFromSmiles(smiles)
-            print(smiles, mol)
 
         atoms = mol.GetAtoms()
         # First of all we iterate over all the atoms in the molecule and apply all the callback
@@ -816,6 +815,7 @@ class MoleculeProcessing(ProcessingBase):
                 metadata=metadata,
                 figure=fig,
             )
+            plt.close(fig)
 
         else:
             fig_path = os.path.join(output_path, f'{index}.png')
