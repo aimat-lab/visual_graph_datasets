@@ -815,10 +815,6 @@ class MoleculeProcessing(ProcessingBase):
                 metadata=metadata,
                 figure=fig,
             )
-            
-            # closing the figure so that it does not cause memory issues
-            plt.close(fig)
-            del fig
 
         else:
             fig_path = os.path.join(output_path, f'{index}.png')

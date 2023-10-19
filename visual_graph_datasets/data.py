@@ -621,10 +621,14 @@ class VisualGraphDatasetWriter(DatasetWriterBase):
         if metadata is not None:
             metadata_path = os.path.join(self.current_path, f'{file_name}.json')
             self.most_recent['metadata_path'] = metadata_path
-            with open(metadata_path, mode='wb') as file:
-                content = orjson.dumps(
+            with open(metadata_path, mode='w') as file:
+                # content = orjson.dumps(
+                #     metadata,
+                #     option=orjson.OPT_SERIALIZE_NUMPY
+                # )
+                content = json.dumps(
                     metadata,
-                    option=orjson.OPT_SERIALIZE_NUMPY
+                    cls=NumericJsonEncoder,
                 )
                 file.write(content)
 
