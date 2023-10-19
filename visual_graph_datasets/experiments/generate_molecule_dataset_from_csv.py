@@ -58,6 +58,7 @@ import time
 import csv
 import yaml
 import datetime
+import multiprocessing
 import typing as t
 from collections import defaultdict
 
@@ -479,6 +480,7 @@ def experiment(e: Experiment):
         file.write(module_code)
 
     e.log('creating visual graph dataset...')
+        
     # 24.02.2023
     # In this dictionary we want to use the smiles identifiers of the elements as the keys and the values
     # should be short reasons why these elements were omitted from the final dataset. In the end we then
@@ -609,7 +611,7 @@ def experiment(e: Experiment):
             e.log(f' * {index}/{dataset_length} elements created'
                   f' - elapsed time: {time_elapsed:.2f}s'
                   f' - remaining time: {time_remaining:.2f}s'
-                  f' - eta: {eta:%A %H:%M}'
+                  f' - eta: {eta:%A %d.%m %H:%M}'
                   f' - avg write: {average_write:.2f}B/s'
                   f' - step time: {time.time() - time_previous:.2f}s'
                   f' - avg graph size: {profiling["graph_size"] / e.EVAL_LOG_STEP:.0f}'
@@ -622,26 +624,24 @@ def experiment(e: Experiment):
             time_previous = time.time()
             bytes_written = 0
             
-            # 05.06.23 - This is an attempt to tackle the massive performance issues with this script.
-            # This will supposedly completely clean the internal matplotlib state because I have the
-            # suspicion that this might be the problem.
-            plt.close('all')
-            plt.clf()
             gc.collect()
 
         index += 1
         bytes_written += os.path.getsize(writer.most_recent['metadata_path'])
         bytes_written += os.path.getsize(writer.most_recent['image_path'])
         
+        # 05.06.23 - This is an attempt to tackle the massive performance issues with this script.
+        # This will supposedly completely clean the internal matplotlib state because I have the
+        # suspicion that this might be the problem.
+        plt.close('all')
+        plt.clf()
+        
         # 19.10.23 - This is another potential source for memory issues. Further above we are creating 
         # a mol object for every one of the smiles strings and they were never cleared. Even though a 
         # mol object isn't big this will still cause some memory build up that could be problematic 
         # for systems with low memory.
-        del d['mol']
-        del d['smiles']
-        del d['data']
+        del additional_graph_data, additional_metadata, data, d
         
-
     e.commit_json('omitted_elements.json', omitted_elements)
     e.log(f'created {index} out of {dataset_length} original elements. '
           f'The rest was skipped either due to errors or filter exclusions.')

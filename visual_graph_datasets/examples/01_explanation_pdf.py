@@ -14,17 +14,32 @@ from pycomex.utils import folder_path, file_namespace
 import visual_graph_datasets.typing as tv
 from visual_graph_datasets.config import Config
 from visual_graph_datasets.web import ensure_dataset
-from visual_graph_datasets.data import load_visual_graph_dataset
+from visual_graph_datasets.data import VisualGraphDatasetReader
 from visual_graph_datasets.visualization.importances import create_importances_pdf
 
-# The VGD configuration
+# :param CONFIG: 
+#       The VGD configuration object
 CONFIG = Config()
 CONFIG.load()
-# The name of the dataset to be loaded and visualized
+# :param DATASET_NAME:
+#       The name of the dataset to be loaded and visualized
 DATASET_NAME = 'rb_dual_motifs'
-# The number of elements to be visualized in the PDF file.
+# :param NUM_EXAMPLES:
+#       The number of elements to be visualized in the PDF file. It is important 
+#       to limit this number because the pdf file will contain one page per each element and 
+#       a pdf file with 10k+ pages representing the entire dataset would become very large.
 NUM_EXAMPLES = 100
 
+# PYCOMEX EXPERIMENTATION FRAMEWORK
+# This file uses the pycomex experimentation framework: https://github.com/the16thpythonist/pycomex
+# A set of examples that explain how it works can be found here:
+# https://github.com/the16thpythonist/pycomex/tree/master/pycomex/examples
+# Basically, the purpose of this framework is to streamline the experience of executing and managing 
+# the results of computational experiment scripts. By wrapping a function in the "Experiment" 
+# decorator, a separate archive folder will be created for each individual execution of the script 
+# which can be used to easily keep track of and manage all the artifacts created during the runtime. 
+# The library also offers additional features such as experiment inheritance, callback hooks and 
+# logging capabilities.
 
 @Experiment(base_path=folder_path(__file__),
             namespace=file_namespace(__file__),
@@ -36,14 +51,14 @@ def experiment(e: Experiment):
     ensure_dataset('rb_dual_motifs', e.CONFIG)
 
     dataset_path = os.path.join(e.CONFIG.get_datasets_path(), 'rb_dual_motifs')
-    metadata_map, index_data_map = load_visual_graph_dataset(
-        dataset_path,
-        # It is also possible to keep track of the loading process by passing a Logger instance, which
-        # will print a log message at every "log_step"-th file that is being loaded from the disk.
+    reader = VisualGraphDatasetReader(
+        path=dataset_path,
+        
         logger=e.logger,
         log_step=1000,
-        metadata_contains_index=True,
     )
+    # This again contains all the elements of the dataset
+    index_data_map: t.Dict[int, dict] = reader.read()
 
     e.log('choosing examples to visualize...')
     dataset_indices = list(index_data_map.keys())

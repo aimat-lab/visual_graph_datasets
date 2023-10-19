@@ -109,7 +109,7 @@ DATASET_CHUNK_SIZE: int = 10_000
 # These parameters control the behavior of the various evaluation functions of the experiment which mainly 
 # includes the logging and plotting facilities.
 
-EVAL_LOG_STEP: int = 200
+EVAL_LOG_STEP: int = 100
 NUM_BINS: int = 10
 PLOT_COLOR: str = 'gray'
 
