@@ -621,16 +621,17 @@ def experiment(e: Experiment):
             profiling['graph_size'] = 0
             time_previous = time.time()
             bytes_written = 0
+            
+            # 05.06.23 - This is an attempt to tackle the massive performance issues with this script.
+            # This will supposedly completely clean the internal matplotlib state because I have the
+            # suspicion that this might be the problem.
+            plt.close('all')
+            plt.clf()
+            gc.collect()
 
         index += 1
         bytes_written += os.path.getsize(writer.most_recent['metadata_path'])
         bytes_written += os.path.getsize(writer.most_recent['image_path'])
-        
-        # 05.06.23 - This is an attempt to tackle the massive performance issues with this script.
-        # This will supposedly completely clean the internal matplotlib state because I have the
-        # suspicion that this might be the problem.
-        plt.close('all')
-        plt.clf()
         
         # 19.10.23 - This is another potential source for memory issues. Further above we are creating 
         # a mol object for every one of the smiles strings and they were never cleared. Even though a 
@@ -639,7 +640,7 @@ def experiment(e: Experiment):
         del d['mol']
         del d['smiles']
         del d['data']
-        gc.collect()
+        
 
     e.commit_json('omitted_elements.json', omitted_elements)
     e.log(f'created {index} out of {dataset_length} original elements. '
