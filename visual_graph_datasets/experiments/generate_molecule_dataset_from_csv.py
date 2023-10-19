@@ -1,5 +1,15 @@
 """
-Generates a molecule dataset from a CSV source dataset.
+Generates a molecule visual graph dataset from a CSV source dataset.
+
+Given a molecular prediction dataset in the format of a CSV file containing the SMILES representations of the 
+molecules and the target value annotations, this experiment will convert it into a visual graph dataset folder.
+
+**LOGGING**
+
+The experiment will output log messages about the current progress in periodic intervals. The lenght of 
+these intervals can be set using an experiment parameter. In these log messages, some basic profiling information 
+will be shown such as the completed and remaining number of elements. The messages also contain estimates of the 
+average creation time and derived from that estimates for the remaining time and estimated time of completion.
 
 **CHANGELOG**
 
@@ -37,8 +47,13 @@ script to become very slow after a certain number of elements have been processe
 process which will hopefully solve the performance problem.
 (4) Using a VisualGraphDatasetWriter instance now to actually write the data to the disk which enables
 the usage of dataset chunking.
+
+0.7.0 - 19.10.23 - (1) Fixed the memory accumulation problem that was caused by storing the Mol objects for 
+each of the smiles.
+(2) Added some more documentation of the experiment parameters
 """
 import os
+import gc
 import time
 import csv
 import yaml
@@ -76,33 +91,48 @@ from visual_graph_datasets.data import VisualGraphDatasetWriter
 block = BlockLogs()
 
 # == SOURCE PARAMETERS ==
-# These parameters determine how to handle the source CSV file of the dataset. There is the possibility
-# to define a file from the local system or to download a file from the VGD remote location
+# These parameters determine how to handle the source CSV file of the dataset. There exists the possibility
+# to define a file from the local system or to download a file from the VGD remote file share location.
+# In this section one also has to determine, for example, the type of the source dataset (regression, 
+# classification) and provide the names of the relevant columns in the CSV file.
 
-# The vgd file share provider from which to download the CSV file to be used as the source for the VGD
-# conversion.
+# :param FILE_SHARE_PROVIDER:
+#       The vgd file share provider from which to download the CSV file to be used as the source for the VGD
+#       conversion. 
 FILE_SHARE_PROVIDER: str = 'main'
-# This may be one of the following two things:
-# 1. A valid absolute file path on the local system pointing to a CSV file to be used as the source for
-#    the VGD conversion
-# 2. A valid relative path to a CSV file stashed on the given vgd file share provider which will be
-#    downloaded first and then processed.
+# :param CSV_FILE_NAME:
+#       The name of the CSV file to be used as the source for the dataset conversion.
+#       This may be one of the following two things:
+#       1. A valid absolute file path on the local system pointing to a CSV file to be used as the source for
+#       the VGD conversion
+#       2. A valid relative path to a CSV file stashed on the given vgd file share provider which will be
+#       downloaded first and then processed.
 CSV_FILE_NAME: str = 'source/benzene_solubility.csv'
-# Optionally, this may define the string name of the CSV column which contains the integer index
-# associated with each dataset element. If this is not given, then integer indices will be randomly
-# generated for each element in the final VGD
+# :param INDEX_COLUMN_NAME:
+#       (Optional) this may define the string name of the CSV column which contains the integer index
+#       associated with each dataset element. If this is not given, then integer indices will be randomly
+#       generated for each element in the final VGD
 INDEX_COLUMN_NAME: t.Optional[str] = None
-# This has to be the string name of the CSV column which contains the SMILES string representation of
-# the molecule.
+# :param SMILES_COLUMN_NAME:
+#       This has to be the string name of the CSV column which contains the SMILES string representation of
+#       the molecule.
 SMILES_COLUMN_NAME: str = 'SMILES'
-# This has to be the string name of the CSV column which contains the target value
+# :param TARGET_TYPE:
+#       This has to be the string name of the type of dataset that the source file represents. The valid 
+#       options here are "regression" and "classification"
 TARGET_TYPE: str = 'regression'  # 'classification'
+# :param TARGET_COLUMN_NAMES:
+#       This has to be a list of string column names within the source CSV file, where each name defines 
+#       one column that contains a target value for each row. In the regression case, this may be multiple 
+#       different regression targets for each element and in the classification case there has to be one 
+#       column per class.
 TARGET_COLUMN_NAMES: t.List[str] = ['LogS']
-# The keys of this dictionary are integers which represent the indices of various train test splits. The
-# values are the string names of the columns which define those corresponding splits. It is expected that
-# these CSV columns contain a "1" if that corresponding element is considered as part of the training set
-# of that split and "0" if it is part of the test set.
-# This dictionary may be empty and then no information about splits will be added to the dataset at all.
+# :param SPLIT_COLUMN_NAMES:
+#       The keys of this dictionary are integers which represent the indices of various train test splits. The
+#       values are the string names of the columns which define those corresponding splits. It is expected that
+#       these CSV columns contain a "1" if that corresponding element is considered as part of the training set
+#       of that split and "0" if it is part of the test set.
+#       This dictionary may be empty and then no information about splits will be added to the dataset at all.
 SPLIT_COLUMN_NAMES: t.Dict[int, str] = {
 }
 
@@ -231,13 +261,26 @@ class VgdMoleculeProcessing(MoleculeProcessing):
     }
 
 
+# :param PROCESSING:
+#       A MoleculeProcessing instance which will be used to convert the molecule smiles representations 
+#       into strings. 
 PROCESSING = VgdMoleculeProcessing()
-# If this flag is True, the undirected edges which make up molecular graph will be converted into two
-# opposing directed edges. Depends on the downstream ML framework to be used.
+# :param UNDIRECTED_EDGES_AS_TWO:
+#       If this flag is True, the undirected edges which make up molecular graph will be converted into two
+#       opposing directed edges. Depends on the downstream ML framework to be used.
 UNDIRECTED_EDGES_AS_TWO: bool = True
-# If this flag is True, the coordinates of each atom will be calculated for each molecule and the resulting
-# 3D coordinate vector will be added as a separate property of the resulting graph dict.
+# :param USE_NODE_COORDINATES:
+#       If this flag is True, the coordinates of each atom will be calculated for each molecule and the resulting
+#       3D coordinate vector will be added as a separate property of the resulting graph dict.
 USE_NODE_COORDINATES: bool = True
+# :param GRAPH_METADATA_CALLBACKS:
+#       This is a dictionary that can be use to define additional information that should be extracted from the 
+#       the csv file and to be transferred to the metadata dictionary of the visual graph dataset elements.
+#       The keys of this dict should be the string names that the properties will then have in the final metadata 
+#       dictionary. The values should be callback functions with two parameters: "mol" is the rdkit molecule object 
+#       representation of each dataset element and "data" is the corresponding dictionary containing all the 
+#       values from the csv file indexed by the names of the columns. The function itself should return the actual 
+#       data to be used for the corresponding custom property. 
 GRAPH_METADATA_CALLBACKS = {
     'name': lambda mol, data: data['smiles'],
     'smiles': lambda mol, data: data['smiles'],
@@ -253,12 +296,21 @@ def no_bonds(mol, data):
     return len(mol.GetBonds()) == 0 or len(mol.GetAtoms()) == 1
 
 
-FILTER_CALLBACKS = [
+# :param FILTER_CALLBACKS:
+#       This should be a list consisting of callable callback methods. Each of these callables should accept 
+#       two parameters: "mol" which is the rdkit molecule representation of a dataset element and "data" which 
+#       is a dict containing all the columns of the corresponding element from the csv source file. 
+#       One such callable should return True if a condition is met that leads to the exclusion of the given 
+#       element and return False otherwise.
+FILTER_CALLBACKS: t.List[t.Callable] = [
     no_bonds
 ]
 
+
 # == DATASET PARAMETERS ==
-# These parameters control aspects of the visual graph dataset creation process
+# These parameters control aspects of the visual graph dataset creation process. This for example includes 
+# the dimensions of the graph visualization images to be created or the name of the visual graph dataset 
+# that should be given to the dataset folder.
 
 # :param DATASET_CHUNK_SIZE:
 #       This number will determine the chunking of the dataset. Dataset chunking will split the dataset
@@ -267,14 +319,19 @@ FILTER_CALLBACKS = [
 #       If this is None then no chunking will be applied at all and everything will be placed into the
 #       top level folder.
 DATASET_CHUNK_SIZE: t.Optional[int] = 10_000
-# The name given to the visual graph dataset folder which will be created.
+# :param DATASET_NAME:
+#       The name given to the visual graph dataset folder which will be created.
 DATASET_NAME: str = 'benzene'
-# The width and height of the molecule visualization PNGs in pixels.
+# :param IMAGE_WIDTH:
+#       The width molecule visualization PNG image
 IMAGE_WIDTH: int = 1000
+# :param IMAGE_HEIGHT:
+#       The height of the molecule visualization PNG image
 IMAGE_HEIGHT: int = 1000
-# This dict will be converted into the .meta.yml file which will be added to the final visual graph dataset
-# folder. This is an optional file, which can add additional meta information about the entire dataset
-# itself. Such as documentation in the form of a description of the dataset etc.
+# :parm DATASET_META:
+#       This dict will be converted into the .meta.yml file which will be added to the final visual graph dataset
+#       folder. This is an optional file, which can add additional meta information about the entire dataset
+#       itself. Such as documentation in the form of a description of the dataset etc.
 DATASET_META: t.Optional[dict] = {
     'version': '0.1.0',
     # A list of strings where each element is a description about the changes introduced in a newer
@@ -306,8 +363,17 @@ DATASET_META: t.Optional[dict] = {
 }
 
 # == EVALUATION PARAMETERS ==
+# These parameters control the evaluation process which included the plotting of the dataset statistics 
+# after the dataset has been completed for example.
+
+# :param EVAL_LOG_STEP:
+#       The number of iterations after which to print a log message
 EVAL_LOG_STEP = 100
+# :param NUM_BINS:
+#       The number of bins to use for the histogram 
 NUM_BINS = 10
+# :param PLOT_COLOR:
+#       The color to be used for the plots
 PLOT_COLOR = 'gray'
 
 # == EXPERIMENT PARAMETERS ==
@@ -426,6 +492,7 @@ def experiment(e: Experiment):
     bytes_written: int = 0  # How many bytes were written since the last chunk was processed
     index: int = 0
     for d in raw_data_list:
+        
         smiles = d['smiles']
         # ~ Convert the smiles string into a molecule
         try:
@@ -555,15 +622,24 @@ def experiment(e: Experiment):
             time_previous = time.time()
             bytes_written = 0
 
-            # 05.06.23 - This is an attempt to tackle the massive performance issues with this script.
-            # This will supposedly completely clean the internal matplotlib state because I have the
-            # suspicion that this might be the problem.
-            plt.close('all')
-            plt.clf()
-
         index += 1
         bytes_written += os.path.getsize(writer.most_recent['metadata_path'])
         bytes_written += os.path.getsize(writer.most_recent['image_path'])
+        
+        # 05.06.23 - This is an attempt to tackle the massive performance issues with this script.
+        # This will supposedly completely clean the internal matplotlib state because I have the
+        # suspicion that this might be the problem.
+        plt.close('all')
+        plt.clf()
+        
+        # 19.10.23 - This is another potential source for memory issues. Further above we are creating 
+        # a mol object for every one of the smiles strings and they were never cleared. Even though a 
+        # mol object isn't big this will still cause some memory build up that could be problematic 
+        # for systems with low memory.
+        del d['mol']
+        del d['smiles']
+        del d['data']
+        gc.collect()
 
     e.commit_json('omitted_elements.json', omitted_elements)
     e.log(f'created {index} out of {dataset_length} original elements. '
