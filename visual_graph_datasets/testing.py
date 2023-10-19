@@ -2,11 +2,19 @@
 Functionality to support unittests.
 """
 import os
+import itertools
 import tempfile
 import typing as t
 
+import matplotlib.pyplot as plt
+import numpy as np
+from visual_graph_datasets.data import VisualGraphDatasetWriter
+import visual_graph_datasets.typing as tv
+
+import visual_graph_datasets.typing as tv
 from visual_graph_datasets.util import TEMPLATE_ENV
 from visual_graph_datasets.config import Config
+from visual_graph_datasets.processing.base import ProcessingBase
 
 
 def clear_files(file_paths: t.List[str]):
@@ -57,3 +65,59 @@ class IsolatedConfig:
     def __exit__(self, *args, **kwargs):
         # In the end we need to make sure to destroy the temporary directory again
         self.dir.__exit__(*args, **kwargs)
+
+
+
+class MockProcessing(ProcessingBase):
+    """
+    This is a mock implementation for a processing class for testing purposes.
+    
+    The domain representation for this processing class is a string which represents an integer. That 
+    integer will be used as the number of nodes for the generated graph. The graph will be fully 
+    connected, meaning that every node will be connected to every other node. The nodes and edges of 
+    the graph will have attribute feature vectors with constant feature values of 1.0
+    """
+    
+    def process(self,
+                value: str,
+                num_node_attributes: int = 10,
+                num_edge_attributes: int = 10,
+                ):
+        num_nodes = int(value)
+        
+        node_indices = list(range(num_nodes))
+        node_attributes = [[1.0] * num_node_attributes for _ in node_indices]
+        
+        # The graph will also be fully-connected, which means that all nodes are connected to all 
+        # other nodes with an edge.
+        edge_indices = list(itertools.permutations(node_indices, 2))
+        edge_attributes = [[1.0] * num_edge_attributes for _ in edge_indices]
+        
+        graph = {
+            'node_indices':         np.array(node_indices, dtype=int),
+            'node_attributes':      np.array(node_attributes, dtype=float),
+            'edge_indices':         np.array(edge_indices, dtype=int),
+            'edge_attributes':      np.array(edge_attributes, dtype=float)
+        }
+        return graph
+    
+    def visualize(self, 
+                  value: tv.DomainRepr, 
+                  width: int, 
+                  height: int, 
+                  **kwargs) -> np.ndarray:
+        pass
+    
+    def create(self,
+               value: tv.DomainRepr, 
+               index: str, 
+               width: int,
+               height: int, 
+               output_path: str, 
+               additional_graph_data: dict, 
+               additional_metadata: dict, 
+               writer: VisualGraphDatasetWriter | None = None, 
+               *args, 
+               **kwargs
+               ) -> tv.MetadataDict:
+        pass

@@ -53,7 +53,6 @@ def experiment(e: Experiment):
     dataset_path = os.path.join(e.CONFIG.get_datasets_path(), 'rb_dual_motifs')
     reader = VisualGraphDatasetReader(
         path=dataset_path,
-        
         logger=e.logger,
         log_step=1000,
     )

@@ -5,11 +5,116 @@ import typing as t
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 from matplotlib.backends.backend_pdf import PdfPages
 from imageio.v2 import imread
 
 import visual_graph_datasets.typing as tc
 from visual_graph_datasets.util import NULL_LOGGER
+
+
+def plot_node_importances_background(ax: plt.Axes,
+                                     g: tc.GraphDict,
+                                     node_positions: np.ndarray,
+                                     node_importances: np.ndarray,
+                                     weight: float = 1.0,
+                                     radius: float = 35.0,
+                                     color_map: t.Optional[str | mcolors.Colormap] = None,
+                                     color: str = 'lightgreen',
+                                     v_min: float = 0.0,
+                                     v_max: float = 1.0,
+                                     zorder: int = -100,
+                                     ):
+    """
+    Given an Axes ``ax`` to draw on and a graph dict ``g`` and the pixel ``node_positions``, this 
+    function will plot the ``node importances`` as colored circles in the style of a heatmap in the 
+    background behind each node. 
+    
+    The importance value determines the opacity of the element. It is also possible to pass 
+    a valid matplotlib ``color_map`` and a ``weight`` value, which will then additionally change the 
+    color of the elements depending on the weight. This can be used to encode a secondary property such 
+    as an explanation fidelity value, for example, into the visualization.
+    """
+
+    normalize = mpl.colors.Normalize(vmin=v_min, vmax=v_max)
+    
+    # Only if the color_map argument is actually given, we actually use a dynamic color map
+    # otherwise we are going to use the constant color that is provided.
+    if color_map is None:
+        cmap = lambda value: color
+    elif isinstance(color_map, str):
+        cmap: mpl.colors.Colormap = mpl.colormaps[color_map]
+    elif isinstance(color_map, mcolors.Colormap):
+        cmap = color_map
+
+    # And then we iterate through all the nodes of the given graph and simply draw the circle 
+    # at each position.
+    for i in g['node_indices']:
+        x, y = node_positions[i]
+        importance = node_importances[i]
+
+        value = normalize(importance)
+        circle = plt.Circle(
+            (x, y),
+            radius=radius,
+            lw=0,
+            color=cmap(weight),
+            fill=cmap(weight),
+            alpha=value,
+            zorder=zorder,
+        )
+        ax.add_artist(circle)
+
+
+def plot_edge_importances_background(ax: plt.Axes,
+                                     g: tc.GraphDict,
+                                     node_positions: np.ndarray,
+                                     edge_importances: np.ndarray,
+                                     weight: float = 1.0,
+                                     thickness: float = 20.0,
+                                     color_map: t.Optional[str | mcolors.Colormap] = None,
+                                     color='lightgreen',
+                                     v_min: float = 0.0,
+                                     v_max: float = 1.0,
+                                     zorder: int = -200,
+                                     ):
+    """
+    Given an Axes ``ax`` to draw on and a graph dict ``g`` and the pixel ``node_positions``, this 
+    function will plot the ``edge_importances`` as colored lines in the style of a heatmap in the 
+    background behind each each edge that connects two nodes.
+    
+    The importance value determines the opacity of the element. It is also possible to pass 
+    a valid matplotlib ``color_map`` and a ``weight`` value, which will then additionally change the 
+    color of the elements depending on the weight. This can be used to encode a secondary property such 
+    as an explanation fidelity value, for example, into the visualization.
+    """
+    normalize = mpl.colors.Normalize(vmin=v_min, vmax=v_max)
+    
+    # Only if the color_map argument is actually given, we actually use a dynamic color map
+    # otherwise we are going to use the constant color that is provided.
+    if color_map is None:
+        cmap = lambda value: color
+    elif isinstance(color_map, str):
+        cmap: mpl.colors.Colormap = mpl.colormaps[color_map]
+    elif isinstance(color_map, mcolors.Colormap):
+        cmap = color_map
+
+    for (i, j), ei in zip(g['edge_indices'], edge_importances):
+        coords_i = node_positions[i]
+        coords_j = node_positions[j]
+
+        x_i, y_i = coords_i
+        x_j, y_j = coords_j
+
+        value = normalize(ei)
+        ax.plot(
+            [x_i, x_j],
+            [y_i, y_j],
+            color=cmap(weight),
+            lw=thickness,
+            alpha=value,
+            zorder=zorder,
+        )
 
 
 def plot_node_importances_border(ax: plt.Axes,
@@ -99,7 +204,31 @@ def create_importances_pdf(graph_list: t.List[tc.GraphDict],
                            log_step: int = 100,
                            ):
     """
-
+    This function can be used to create a PDF file that shows the visualizations of multiple importance explanations.
+    
+    The pdf will consist of an individual page for each graph given in the ``graph_list``. For each element it is possible 
+    to visualize multiple (columns) multi-channel (rows) explanations. This is mainly intended to provide a method to 
+    directly compare the explanations created by multiple different explanation methods.
+    
+    :param graph_list: A list containing the graph dict representations of all the graphs to be visualized
+    :param image_path_list: A list containing the absolute string paths to the visualization images of the 
+        graphs. Must have the same order as graph_list
+    :param node_positions_list: A list containing the node position arrays for the graphs to be visualized. 
+        These arrays should determine the 2D pixel coordinates for each node of the graphs. Must have the 
+        same order as graph_list.
+    :param importances_map: A dictionary that defines the importance explanation masks to be visualized. The keys 
+        of this dict are unique string identifiers that describe the different explanation sources from which the 
+        explanations came from. This could for example be the names of different explainability methods. The values 
+        are tuples of two elements. The first tuple element is a list of node importance arrays, which define the 
+        actual node importance values for each node and each channel. The second element is a list of edge importance 
+        arrays, which define the actual edge importance values for each edge and each channel.
+        These lists must have the same order as the given graph_list.
+    :param plot_node_importances_cb: The callable function that actually realizes the drawing of the node importances 
+        onto the Axes canvas.
+    :param plot_edge_importances_cb: The callable function that actually realizes the drawing of the edge importances 
+        onto the Axes canvas.
+    :param base_fig_size: The size of the figures. Modification of this value will influence the file size of the PDF 
+        and the ratio of the size of the text and image elements within each page of the PDF.
     """
     # ~ ASSERTIONS ~
     # Some assertions in the beginning to avoid trouble later, because this function will be somewhat
