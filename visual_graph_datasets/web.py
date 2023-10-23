@@ -83,6 +83,18 @@ class NextcloudFileShare(AbstractFileShare):
                       chunk_size: int = 8192,
                       log_step: int = 1 * 1024**2  # Log after every 10MB
                       ) -> str:
+        """
+        Given the ``file_name`` (which may be a path relative to the origin of the remote file share), this method 
+        will download that file into the given ``folder_path``.
+        
+        :param file_name: The name of the file to be downloaded. This may also be a relative path to the file in question.
+        :param folder_path: The absolute path to the local folder into which the file should be placed. The file will have 
+            the same name inside this folder as it had on the remote file share server.
+        :param chunk_size: The chunk size with which to download the file.
+        :param log_step: The number of bytes after which to produce a log message about the progress of the download
+        
+        :returns: str
+        """
         url = '/'.join([self.url, 'download'])
         params = {
             'path': '/',
@@ -93,6 +105,15 @@ class NextcloudFileShare(AbstractFileShare):
         # wrong when downloading nested files.
         file_path = os.path.join(folder_path, os.path.basename(file_name))
         with requests.get(url, params=params, stream=True) as r:
+            
+            # 20.10.23 - As the first thing we have to check for a potential error and then create a meaningful 
+            # error message in case the download could not proceed correctly.
+            if r.status_code != 200:
+                raise ConnectionError(f'There was an error during the download of the file "{file_name}" from the '
+                                      f'file share provider "{self.provider_id}". This most likely means that there exists no '
+                                      f'dataset with the given name on that file share. However, it could also indicate '
+                                      f'connectivity issues in general - so please check your internet connection.')
+            
             if 'Content-Length' in r.headers:
                 total_bytes = int(r.headers['Content-Length'])
 
@@ -177,9 +198,32 @@ def get_file_share(config: Config = Config(),
     return file_share
 
 
-def ensure_dataset(dataset_name: str, config: Config = Config(), provider_id: str = 'main'):
-
+def ensure_dataset(dataset_name: str, 
+                   config: Config = Config(), 
+                   provider_id: str = 'main',
+                   logger: logging.Logger = NULL_LOGGER,
+                   ) -> bool:
+    """
+    Makes sure that the dataset with the given ``dataset_name`` exists on the local system. If that dataset does not 
+    yet exist on the local system it will be downloaded from the file share identified by the given ``provider_id`` and 
+    that is defined in the ``config``.
+    
+    Therefore, after this function has successfully terminated, one can be sure that the requested dataset does exist
+    within the ``config.get_datasets_path`` folder!
+    
+    :returns: A boolean value which is true if the dataset has been downloaded in this function call and Fasle if the 
+        dataset already exists on the system.
+    """
     dataset_path = os.path.join(config.get_datasets_path(), dataset_name)
     if not os.path.exists(dataset_path):
+        logger.info(f'the dataset "{dataset_name}" not found, downloading from remote file share "{provider_id}"...')
         file_share = get_file_share(config=config, provider_id=provider_id)
+        file_share.logger = logger
+        
+        # Here we actually download the dataset with the given name
         file_share.download_dataset(dataset_name, config.get_datasets_path())
+        
+        return True
+    else:
+        logger.info(f'the dataset "{dataset_name}" already exists locally! Skipping download.')
+        return False

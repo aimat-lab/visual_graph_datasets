@@ -24,6 +24,14 @@ DEFAULT_DATASETS_PATH = os.path.join(FOLDER_PATH, 'datasets')
 
 
 def load_config(path: str = CONFIG_PATH) -> dict:
+    """
+    Given the ``path`` to a valid YAML config file, this function will load that file and return the 
+    content as a dictionary.
+    
+    If the given path does not exist, this function returns an empty dictionary.
+    
+    :returns: a dictionary with the yaml content
+    """
     if os.path.exists(path):
         # If the config file indeed exists, we will load the yml file as a dictionary and return that
         with open(path, mode='r') as file:

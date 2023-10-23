@@ -5,11 +5,54 @@ import tempfile
 
 from visual_graph_datasets.config import Config
 from visual_graph_datasets.web import get_file_share
+from visual_graph_datasets.web import ensure_dataset
 from visual_graph_datasets.web import AbstractFileShare, NextcloudFileShare
 from visual_graph_datasets.testing import IsolatedConfig
 
+from .util import LOG
 
-# == UNITTESTS ==
+
+def test_ensure_dataset_dataset_not_found_error():
+    """
+    When the specified dataset does not exist in the remote location then there should be a ConnectionError and 
+    this error should have an informative error message.
+    """
+    with IsolatedConfig() as config:
+        with pytest.raises(ConnectionError) as e_info:
+            ensure_dataset(
+                dataset_name='does_not_exist',
+                config=config,
+                provider_id='main',
+                logger=LOG,
+            )
+        
+        print(e_info)
+
+
+def test_ensure_dataset_basically_works():
+    """
+    calling "ensure_dataset" should make sure that the specified dataset exists on the system and if it does not 
+    exist then the thing is that it should not be bothered. 
+    """
+    with IsolatedConfig() as config:
+        # At the beginning there should be no datasets in this fresh config context
+        files = os.listdir(config.get_datasets_path())
+        assert len(files) == 0
+        
+        ensure_dataset(
+            dataset_name='mock', 
+            config=config, 
+            provider_id='main', 
+            logger=LOG
+        )
+         
+        # only after we call that function, the dataset should be found in the local system
+        files = os.listdir(config.get_datasets_path())
+        assert len(files) == 1
+        dataset_path = os.path.join(config.get_datasets_path(), 'mock')
+        dataset_files = os.listdir(dataset_path)
+        assert len(dataset_files) > 10
+        
 
 def test_get_file_share_basically_works():
     """

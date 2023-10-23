@@ -12,7 +12,7 @@ from visual_graph_datasets.testing import IsolatedConfig
 
 def test_testing_config():
     """
-    TestingConfig is a utility context manager which can be used to create isolated environments for the
+    IsolatedConfig is a utility context manager which can be used to create isolated environments for the
     testing purposes.
     """
     with IsolatedConfig() as config:
@@ -22,20 +22,29 @@ def test_testing_config():
 
 
 def test_load_config_works_when_no_file_exists():
+    """
+    "load_config" should also work when the given path does not exist and in this case it should return a 
+    an empty dict
+    """
     config_dict = load_config('')
     assert isinstance(config_dict, dict)
     assert len(config_dict) == 0
 
 
 def test_config_object_can_be_created_without_config_file():
+    """
+    A "Config" object should be able to be created without specifying a config file.
+    """
     config = Config()
     assert isinstance(config, Config)
     assert isinstance(config.data, dict)
 
 
 def test_config_singleton():
-    # The config class is designed as a singleton, so multiple invocations of the constructor should all
-    # return the same instance
+    """
+    The config class is designed as a singleton, so multiple invocations of the constructor should all
+    return the same instance
+    """
     config_1 = Config()
     config_2 = Config()
     assert config_1 == config_2
