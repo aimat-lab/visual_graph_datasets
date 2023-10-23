@@ -34,8 +34,14 @@ make AI methods trained on such datasets more comparable. The canonical visualiz
 the visualization of attributional XAI explanations specifically are aimed to improve the comparability and
 reproducability of XAI methods in the future.
 
-Installation
-============
+🔥 Features
+===========
+
+* Dataset format specifically for **XAI** based on **Graph** structured data
+* Currently supports color graphs and molecular graphs
+
+📦 Installation
+===============
 
 First clone this repository:
 
@@ -50,8 +56,8 @@ Then install it like this:
     cd visual_graph_datasets
     pip3 install -e .
 
-Command Line Interface
-======================
+📟 Command Line Interface
+=========================
 
 Download datasets
 -----------------
@@ -88,8 +94,8 @@ and some metadata information about them by using the command ``list``:
 
     python3 -m visual_graph_datasets.cli list
 
-Quickstart
-==========
+🚀 Quickstart
+=============
 
 The datasets are mainly intended to be used in combination with other packages, but this package provides
 some basic utilities to load and explore the datasets themselves within python programs.
@@ -294,8 +300,8 @@ folder and inherit from the base experiment.
     )
     experiment.run_if_main()
 
-Datasets
-========
+📊 Datasets
+===========
 
 Here is a list of the datasets currently uploaded on the main file share provider.
 
@@ -303,3 +309,8 @@ For more information about the individual datasets use the ``list`` command in t
 
 * TO BE DONE
 
+🤝 Credits
+==========
+
+* `PyComex <https://github.com/the16thpythonist/pycomex>`_ is a micro framework that simplifies the creation, execution and managmenet of computation experiments 
+  with python.
