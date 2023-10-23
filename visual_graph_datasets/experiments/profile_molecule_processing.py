@@ -34,7 +34,7 @@ from visual_graph_datasets.data import VisualGraphDatasetWriter
 # :param NUM_ITERATIONS:
 #       The number of iterations that the corresponding functions will consequetively be executed such that 
 #       there is the number of elements in that thing.
-NUM_ITERATIONS: int = 300
+NUM_ITERATIONS: int = 500
 # :param VALUE:
 #       This is the SMILES string representation of the molecule that will be used (processed to graph / visualized) for 
 #       the testing purposes.
@@ -138,12 +138,11 @@ def experiment(e: Experiment):
     e.log(f'starting the profiling for the "visualize_as_figure" operation with {e.NUM_ITERATIONS} iterations...')
     for index in range(e.NUM_ITERATIONS):
         time_start = time.time()
-        fig = processing.visualize_as_figure(
+        fig, _ = processing.visualize_as_figure(
             value=e.VALUE,
             width=e.WIDTH,
             height=e.HEIGHT
         )
-        plt.close(fig)
         plt.close('all')
         duration = time.time() - time_start
         e['duration/visualize'].append(duration)
@@ -157,6 +156,7 @@ def analysis(e: Experiment):
     # We plot them over the iterations here because we are mainly interested in seeing whether 
     # there actually is an increase over time
     for key in ['create', 'writer', 'process', 'visualize']:
+        e.log(f'creating plots for key "{key}"...')
         fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(10, 10))
         ax.plot(
             e['iterations'], 
