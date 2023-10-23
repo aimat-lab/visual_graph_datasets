@@ -85,6 +85,11 @@ def visualize_molecular_graph_from_mol(ax: plt.Axes,
     image = Image.open(file_obj, formats=['png'])
     image = np.array(image)
     ax.imshow(image)
+    
+    # 23.10.23 - Here we just want to make sure that we are properly doing the memory management of 
+    # for this function.
+    file_obj.close()
+    del image
 
     # The RDKit svg drawer class offers some nice functionality to figure out the coordinates of those
     # files within the drawer.

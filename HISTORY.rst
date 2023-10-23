@@ -330,3 +330,10 @@ Bugfixes
 -------------------
 
 - Fixed a bug where the CogilesEncoder duplicated edges in some very weird edge cases!
+
+0.13.5 - 23.10.2023
+-------------------
+
+- Added the experiment ``profile_molecule_processing.py`` to profile and plot the runtime of the different 
+  process components that create a visual graph dataset element with the aim of identifying the source of the 
+  runtime degradation bug.
