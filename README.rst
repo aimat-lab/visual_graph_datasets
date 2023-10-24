@@ -15,9 +15,9 @@
 .. image:: ./banner.png
    :alt: banner image
 
-=====================
-Visual Graph Datasets
-=====================
+========================
+🖼️ Visual Graph Datasets
+========================
 
 This package supplies management and utilities for **graph datasets** used to train **graph neural networks**
 and more specifically aimed at **explainable AI (XAI)** methods
@@ -29,19 +29,26 @@ each element is represented by two files:
 - A ``json`` file containing metadata information, including the **full graph representation**
 - A ``png`` file containing a canonical visualization of the graph.
 
-We believe that providing a canonical graph representation as well as a canonical visualization will help to
-make AI methods trained on such datasets more comparable. The canonical visualization and standard utilities for
-the visualization of attributional XAI explanations specifically are aimed to improve the comparability and
-reproducability of XAI methods in the future.
+We believe that this dataset format provides the following examples:
+
+- The computational load of pre-processing large datasets into graph representations for model training is 
+  *shifted* towards a data storage load. 
+- A VGD dataset provides a *canonical* graph represenation which makes downstream prediction results more 
+  comparable since implementations do not differ w.r.t. pre-processing anymore.
+- A VGD dataset provides a *canonical* graph visualization which makes downstream *explanation* results more 
+  comparable. Additionally, simply having to load a single image instead of re-computing the visualization 
+  everytime makes the visualization of explanation results more computationally efficient.
 
 🔥 Features
 ===========
 
-* Dataset format specifically for **XAI** based on **Graph** structured data
-* Currently supports color graphs and molecular graphs
+* Dataset format specifically for **XAI** applications based on **Graph** structured data.
+* Currently supports color graphs and molecular graphs.
+* Standard multiple functions to visualize graph masks / attributional explanations on top of the 
+  canonical graph visualizations in different styles.
 
-📦 Installation
-===============
+📦 Installation by Source
+=========================
 
 First clone this repository:
 
@@ -49,12 +56,155 @@ First clone this repository:
 
     git clone https://github/username/visual_graph_datasets.git
 
-Then install it like this:
+Then navigate into the cloned directory and install it like this:
 
 .. code-block:: console
 
     cd visual_graph_datasets
-    pip3 install -e .
+    pip3 install -e . 
+
+*Optional.* Alternatively the package can also be installed using `poetry <https://python-poetry.org/>`_
+
+.. code-block:: console
+
+    poetry install
+
+📦 Installation by Package
+==========================
+
+The package is also published to PyPi and can directly be installed like this:
+
+.. code-block:: console
+
+    pip3 install visual_graph_datasets
+
+🚀 Quickstart
+=============
+
+The datasets are mainly intended to be used in combination with other packages, but this package provides
+some basic utilities to load and explore the datasets themselves within python programs.
+
+.. code-block:: python
+
+    import os
+    import typing as t
+    import matplotlib.pyplot as plt
+
+    from visual_graph_datasets.config import Config
+    from visual_graph_datasets.web import ensure_dataset
+    from visual_graph_datasets.data import VisualGraphDatasetReader
+    from visual_graph_datasets.visualization.base import draw_image
+    from visual_graph_datasets.visualization.importances import plot_node_importances_border
+    from visual_graph_datasets.visualization.importances import plot_edge_importances_border
+
+    # This object will load the settings from the main config file. This config file contains options
+    # such as changing the default datasets folder and defining custom alternative file share providers
+    config = Config()
+    config.load()
+
+    # First of all we need to make sure that the dataset exists locally, this function will download it from
+    # the default file share provider if it does not exist.
+    ensure_dataset('rb_dual_motifs', config)
+
+    # Afterwards we can be sure that the datasets exists and can now load it from the default datasets path.
+    # The data will be loaded as a dictionary whose int keys are the indices of the corresponding elements
+    # and the values are dictionaries which contain all the relevant data about the dataset element,
+    # (Dataset format is explained below)
+    dataset_path = os.path.join(config.get_datasets_path(), 'rb_dual_motifs')
+    reader = VisualGraphDatasetReader(dataset_path)
+    data_index_map: t.Dict[int, dict] = reader.read()
+
+    # Using this information we can visualize the ground truth importance explanation annotations for one
+    # element of the dataset like this.
+    index = 0
+    data = data_index_map[index]
+    # This is the dictionary which represents the graph structure of the dataset element. Descriptive
+    # string keys and numpy array values.
+    g = data['metadata']['graph']
+    fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(10, 10))
+    draw_image(ax, image_path=data['image_path'])
+    plot_node_importances_border(
+        ax=ax,
+        g=g,
+        node_positions=g['image_node_positions'],
+        node_importances=g['node_importances_2'][:, 0],
+    )
+    plot_edge_importances_border(
+        ax=ax,
+        g=g,
+        node_positions=g['image_node_positions'],
+        edge_importances=g['edge_importances_2'][:, 0],
+    )
+    fig_path = os.path.join(os.getcwd(), 'importances.pdf')
+    fig.savefig(fig_path)
+
+
+📖 Documentation
+================
+
+There does not yet exist a dedicated documentation, but to learn more about the package please refer to the 
+`visual_graph_datasets/examples <https://github.com/aimat-lab/visual_graph_datasets/tree/master/visual_graph_datasets/examples>`_ folder.
+The example files listed there are supposed to chronologically illustrate the most important features of the 
+package by example. Additionally, each example module contains abundant comments that describe each new feature 
+or concept.
+
+🔄 Converting Datasets
+======================
+
+Since datasets are not naturally given in the VGD format, one important feature is the conversion of
+datasets from their domain-specific representations into such VGD dataset. This process will be described
+in the following section. Generally, there exist some pre-implemented conversion functionality for some
+common dataset formats.
+
+These standard implementations are in the format of ``pycomex`` experiment modules, which can be
+*extended* by sub experiment modules. Within these new experiment modules, only the global configurations
+variables have to be adapted to a new, custom dataset.
+
+Molecular Graph Datasets from SMILES CSV Files
+----------------------------------------------
+
+One particularly important class of graph datasets is based on molecular graphs, which are especially
+relevant for the domains of chemistry and material science. Most often, datasets of molecular graphs are
+given as CSV files which contain the string SMILES representation of a molecule and some additional
+target value annotations to be trained on.
+
+To convert such a dataset, you can extend the base experiment ``generate_molecule_dataset_from_csv.py`` as
+shown in the code example below. For this purpose simply create a *NEW* experiment file in the experiments
+folder and inherit from the base experiment.
+
+.. code-block:: python
+
+    """generate_molecule_dataset_from_csv__custom.py"""
+    import os
+    from pycomex.functional.experiment import Experiment
+    from pycomex.utils import folder_path, file_namespace
+    from visual_graph_datasets.util import EXPERIMENTS_PATH
+
+    # Insert the absolute path to your CSV here
+    CSV_FILE_NAME: str = '../path/to/your.csv'
+    # This has to be the string name of the CSV column which contains
+    # the SMILES string representation of the molecules
+    SMILES_COLUMN_NAME: str = 'smiles'
+    # Define whether the dataset is regression or classification.
+    # NOTE: For classification, there has to be ONE COLUMN for EACH
+    #       class, which contains a 0/1 boolean value for the class
+    #       annotation.
+    TARGET_TYPE: str = 'regression'  # alternatively: 'classification'
+    # This has to be the string name of the CSV column which contains the target value.
+    # You may also give multiple column names here for a multi-regression dataset or a 
+    # classification dataset.
+    TARGET_COLUMN_NAMES: t.List[str] = ['LogS']
+
+    # This will invoke the actual implementation of the conversion. After this code has 
+    # finished executing. You can do this 
+    experiment = Experiment.extend(
+        os.path.join(EXPERIMENTS_PATH, 'generate_molecule_dataset_from_csv.py'),
+        base_path=folder_path(__file__),
+        namespace=file_namespace(__file__),
+        glob=globals(),
+    )
+    experiment.run_if_main()
+
 
 📟 Command Line Interface
 =========================
@@ -63,7 +213,7 @@ Download datasets
 -----------------
 
     **NOTE**: We *strongly* encourage to store datasets on an SSD instead of an HDD, as this can make a
-    difference of multiple hours(!) when loading especially large datasets.
+    difference of multiple hours(!) when loading especially large datasets (100k+ elements).
 
 Datasets can simply be downloaded by name by using the ``download`` command:
 
@@ -93,66 +243,6 @@ and some metadata information about them by using the command ``list``:
 .. code-block:: console
 
     python3 -m visual_graph_datasets.cli list
-
-🚀 Quickstart
-=============
-
-The datasets are mainly intended to be used in combination with other packages, but this package provides
-some basic utilities to load and explore the datasets themselves within python programs.
-
-.. code-block:: python
-
-    import os
-    import typing as t
-    import matplotlib.pyplot as plt
-
-    from visual_graph_datasets.config import Config
-    from visual_graph_datasets.web import ensure_dataset
-    from visual_graph_datasets.data import load_visual_graph_dataset
-    from visual_graph_datasets.visualization.base import draw_image
-    from visual_graph_datasets.visualization.importances import plot_node_importances_border
-    from visual_graph_datasets.visualization.importances import plot_edge_importances_border
-
-    # This object will load the settings from the main config file. This config file contains options
-    # such as changing the default datasets folder and defining custom alternative file share providers
-    config = Config()
-    config.load()
-
-    # First of all we need to make sure that the dataset exists locally, this function will download it from
-    # the default file share provider if it does not exist.
-    ensure_dataset('rb_dual_motifs', config)
-
-    # Afterwards we can be sure that the datasets exists and can now load it from the default datasets path.
-    # The data will be loaded as a dictionary whose int keys are the indices of the corresponding elements
-    # and the values are dictionaries which contain all the relevant data about the dataset element,
-    # (Dataset format is explained below)
-    dataset_path = os.path.join(config.get_datasets_path(), 'rb_dual_motifs')
-    data_index_map: t.Dict[int, dict] = {}
-    _, data_index_map = load_visual_graph_dataset(dataset_path)
-
-    # Using this information we can visualize the ground truth importance explanation annotations for one
-    # element of the dataset like this.
-    index = 0
-    data = data_index_map[index]
-    # This is the dictionary which represents the graph structure of the dataset element. Descriptive
-    # string keys and numpy array values.
-    g = data['metadata']['graph']
-    fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(10, 10))
-    draw_image(ax, image_path=data['image_path'])
-    plot_node_importances_border(
-        ax=ax,
-        g=g,
-        node_positions=g['image_node_positions'],
-        node_importances=g['node_importances_2'][:, 0],
-    )
-    plot_edge_importances_border(
-        ax=ax,
-        g=g,
-        node_positions=g['image_node_positions'],
-        edge_importances=g['edge_importances_2'][:, 0],
-    )
-    fig_path = os.path.join(os.getcwd(), 'importances.pdf')
-    fig.savefig(fig_path)
 
 
 Dataset Format
@@ -243,63 +333,6 @@ additional fields depending on each dataset.
 - ``num_node_attributes``: The size of the node attribute vector
 - ``num_edge_attributes``: The size of the edge attribute vector
 
-Converting Datasets
-===================
-
-Since datasets are not naturally given in the VGD format, one important feature is the conversion of
-datasets in their domain-specific representations into such a VGD dataset. This process will be described
-in the following section. Generally, there exist some pre-implemented conversion functionality for some
-common dataset formats.
-
-These standard implementations are in the format of ``pycomex`` base experiment modules, which can be
-*extended* by sub experiment modules. Within these new experiment modules, only the global configurations
-variables have to be adapted to a new, custom dataset.
-
-Molecular Graphs - SMILES CSVs
-------------------------------
-
-One particularly important class of graph datasets is based on molecular graphs, which are especially
-relevant for the domains of chemistry and material science. Most often, datasets of molecular graphs are
-given as CSV files which contain the string SMILES representation of a molecule and some additional
-target value annotations to be trained on.
-
-To convert such a dataset, you can extend the base experiment ``generate_molecule_dataset_from_csv.py`` as
-shown in the code example below. For this purpose simply create a *NEW* experiment file in the experiments
-folder and inherit from the base experiment.
-
-.. code-block:: python
-
-    """generate_molecule_dataset_from_csv_custom.py"""
-    from pycomex.functional.experiment import Experiment
-    from pycomex.utils import folder_path, file_namespace
-
-    # Insert the absolute path to your CSV here
-    CSV_FILE_NAME: str = '../path/to/your.csv'
-    # If your dataset has canonical integer indices as part the
-    # CSV file, you can define the string name of that COLUMN here
-    # to use these indices for the VGD as well. If it stays as None,
-    # random indices will be assigned to the elements.
-    INDEX_COLUMN_NAME: t.Optional[str] = None
-    # This has to be the string name of the CSV column which contains
-    # the SMILES string representation of the molecules
-    SMILES_COLUMN_NAME: str = 'SMILES'
-    # Define whether the dataset is regression or classification.
-    # NOTE: For classification, there has to be ONE COLUMN for EACH
-    #       class, which contains a 0/1 boolean value for the class
-    #       annotation.
-    TARGET_TYPE: str = 'regression'  # alternatively: 'classification'
-    # This has to be the string name of the CSV column which contains the target value
-    TARGET_COLUMN_NAMES: t.List[str] = ['LogS']
-
-    # This will invoke the main experiment implementation
-    experiment = Experiment.extend(
-        'generate_molecule_dataset_from_csv.py',
-        base_path=folder_path(__file__),
-        namespace=file_namespace(__file__),
-        glob=globals(),
-    )
-    experiment.run_if_main()
-
 📊 Datasets
 ===========
 
@@ -307,7 +340,10 @@ Here is a list of the datasets currently uploaded on the main file share provide
 
 For more information about the individual datasets use the ``list`` command in the CLI (see above).
 
-* TO BE DONE
+* ``rb_dual_motifs`` - A synthetically created graph regression dataset consisting of randomly generated color graphs 
+  which are seeded with special value-determining motifs. Each graph contains between 0 and 2 motifs, which each contribute 
+  a fixed value to the overall graph target value.
+* ``aqsoldb`` - A dataset of ~10k molecular graphs annotated with the experimentally determined water solubility values.
 
 🤝 Credits
 ==========

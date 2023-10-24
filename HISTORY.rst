@@ -337,3 +337,9 @@ Bugfixes
 - Added the experiment ``profile_molecule_processing.py`` to profile and plot the runtime of the different 
   process components that create a visual graph dataset element with the aim of identifying the source of the 
   runtime degradation bug.
+- Fixed the runtime degradation / memory leak issue in ``generate_molecule_dataset_from_csv.py``. It seems like the 
+  problem actually wasn't in the code but in the matplotlib backend! The problem clearly occurs when using the 
+  ``TkAgg`` backend but does not appear when using the ``Agg`` backend.
+- Modified the generation of the QM9 dataset in ``generate_molecule_dataset_from_csv__qm9.py``
+- Added the new experiment file ``generate_molecule_dataset_from_csv__qm9sub.py`` which generates the QM9 sub 
+  dataset which is a smaller subset of QM9 with only 22k elements and 9 target columns.

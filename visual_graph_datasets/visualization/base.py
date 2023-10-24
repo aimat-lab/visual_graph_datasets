@@ -13,7 +13,7 @@ from imageio.v2 import imread
 import visual_graph_datasets.typing as tc
 
 
-def close_fig(figure: mpl.Figure):
+def close_fig(figure):
     plt.cla()
     plt.clf()
     plt.close(figure)
