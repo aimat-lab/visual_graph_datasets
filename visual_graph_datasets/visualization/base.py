@@ -13,6 +13,15 @@ from imageio.v2 import imread
 import visual_graph_datasets.typing as tc
 
 
+def close_fig(figure: mpl.Figure):
+    plt.cla()
+    plt.clf()
+    plt.close(figure)
+    plt.close()
+    del figure.savefig
+    del figure
+
+
 def create_frameless_figure(width: int = 100,
                             height: int = 100,
                             ratio: int = 2) -> t.Tuple[plt.Figure, plt.Axes]:

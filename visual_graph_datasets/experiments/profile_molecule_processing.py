@@ -26,6 +26,7 @@ from pycomex.functional.experiment import Experiment
 from pycomex.util import file_namespace, folder_path
 
 from visual_graph_datasets.visualization.base import create_frameless_figure
+from visual_graph_datasets.visualization.base import close_fig
 from visual_graph_datasets.processing.molecules import MoleculeProcessing
 from visual_graph_datasets.data import VisualGraphDatasetWriter
 
@@ -102,19 +103,12 @@ def experiment(e: Experiment):
             width=e.WIDTH,
             height=e.HEIGHT,
         )
-        plt.cla()
-        plt.clf()
-        plt.close(fig)
-        plt.close()
-        del fig.savefig
-        del fig, ax
+        close_fig(fig)
         
         duration = time.time() - time_start
         e['duration/figure'].append(duration)
         if index % 100 == 0:
             e.log(f' * ({index:04d}/{e.NUM_ITERATIONS}) done - duration: {duration:.3f}s')
-       
-    return
              
     # ~ Checking the "visualize" function
     # Actually in this case we will just check the visualize_as_figure function which means that 
@@ -136,6 +130,8 @@ def experiment(e: Experiment):
         e['duration/visualize'].append(duration)
         if index % 100 == 0:
             e.log(f' * ({index:04d}/{e.NUM_ITERATIONS}) done - duration: {duration:.3f}s')
+    
+    return
     
     # ~ Checking the "process" function
     # The create function will do everyting: process the smiles into a molecular graph, create the visualization 
