@@ -189,7 +189,7 @@ folder and inherit from the base experiment.
 
     # == CUSTOMIZE HERE ==
     # Insert the absolute path to your CSV here
-    CSV_FILE_NAME: str = '/home/jonas/Data/Programming/visual_graph_datasets/visual_graph_datasets/experiments/assets/dipole_moment.csv'
+    CSV_FILE_NAME: str = '../absolute/path/to/csv'
     # This has to be the string name of the CSV column which contains
     # the SMILES string representation of the molecules
     SMILES_COLUMN_NAME: str = 'smiles'
