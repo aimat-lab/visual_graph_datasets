@@ -39,6 +39,7 @@ We believe that this dataset format provides the following examples:
   comparable. Additionally, simply having to load a single image instead of re-computing the visualization 
   everytime makes the visualization of explanation results more computationally efficient.
 
+===========
 🔥 Features
 ===========
 
@@ -47,6 +48,7 @@ We believe that this dataset format provides the following examples:
 * Standard multiple functions to visualize graph masks / attributional explanations on top of the 
   canonical graph visualizations in different styles.
 
+=========================
 📦 Installation by Source
 =========================
 
@@ -69,6 +71,7 @@ Then navigate into the cloned directory and install it like this:
 
     poetry install
 
+==========================
 📦 Installation by Package
 ==========================
 
@@ -78,6 +81,7 @@ The package is also published to PyPi and can directly be installed like this:
 
     pip3 install visual_graph_datasets
 
+=============
 🚀 Quickstart
 =============
 
@@ -138,7 +142,7 @@ some basic utilities to load and explore the datasets themselves within python p
     fig_path = os.path.join(os.getcwd(), 'importances.pdf')
     fig.savefig(fig_path)
 
-
+================
 📖 Documentation
 ================
 
@@ -148,6 +152,7 @@ The example files listed there are supposed to chronologically illustrate the mo
 package by example. Additionally, each example module contains abundant comments that describe each new feature 
 or concept.
 
+======================
 🔄 Converting Datasets
 ======================
 
@@ -174,7 +179,7 @@ folder and inherit from the base experiment.
 
 .. code-block:: python
 
-    """filegenerate_molecule_dataset_from_csv__custom.py"""
+    """new file: generate_molecule_dataset_from_csv__custom.py"""
     import os
     from pycomex.functional.experiment import Experiment
     from pycomex.utils import folder_path, file_namespace
@@ -207,6 +212,7 @@ folder and inherit from the base experiment.
     experiment.run_if_main()
 
 
+=========================
 📟 Command Line Interface
 =========================
 
@@ -246,6 +252,7 @@ and some metadata information about them by using the command ``list``:
     python3 -m visual_graph_datasets.cli list
 
 
+==============
 Dataset Format
 ==============
 
@@ -334,6 +341,7 @@ additional fields depending on each dataset.
 - ``num_node_attributes``: The size of the node attribute vector
 - ``num_edge_attributes``: The size of the edge attribute vector
 
+===========
 📊 Datasets
 ===========
 
@@ -346,6 +354,7 @@ For more information about the individual datasets use the ``list`` command in t
   a fixed value to the overall graph target value.
 * ``aqsoldb`` - A dataset of ~10k molecular graphs annotated with the experimentally determined water solubility values.
 
+==========
 🤝 Credits
 ==========
 
