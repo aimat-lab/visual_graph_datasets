@@ -181,12 +181,15 @@ folder and inherit from the base experiment.
 
     """new file: generate_molecule_dataset_from_csv__custom.py"""
     import os
+    import typing as t
+
     from pycomex.functional.experiment import Experiment
     from pycomex.utils import folder_path, file_namespace
     from visual_graph_datasets.util import EXPERIMENTS_PATH
 
+    # == CUSTOMIZE HERE ==
     # Insert the absolute path to your CSV here
-    CSV_FILE_NAME: str = '../path/to/your.csv'
+    CSV_FILE_NAME: str = '/home/jonas/Data/Programming/visual_graph_datasets/visual_graph_datasets/experiments/assets/dipole_moment.csv'
     # This has to be the string name of the CSV column which contains
     # the SMILES string representation of the molecules
     SMILES_COLUMN_NAME: str = 'smiles'
@@ -196,12 +199,15 @@ folder and inherit from the base experiment.
     #       annotation.
     TARGET_TYPE: str = 'regression'  # alternatively: 'classification'
     # This has to be the string name of the CSV column which contains the target value.
-    # You may also give multiple column names here for a multi-regression dataset or a 
+    # You may also give multiple column names here for a multi-regression dataset or a
     # classification dataset.
-    TARGET_COLUMN_NAMES: t.List[str] = ['LogS']
+    TARGET_COLUMN_NAMES: t.List[str] = ['value']
+    # A unique string name for the dataset
+    DATASET_NAME: str = 'custom'
 
-    # This will invoke the actual implementation of the conversion. After this code has 
-    # finished executing, you can find the dataset folder within the 
+    # == DO NOT CHANGE ==
+    # This will invoke the actual implementation of the conversion. After this code has
+    # finished executing, you can find the dataset folder within the
     # "results/generate_molecule_dataset_from_csv__custom" folder that has been created
     experiment = Experiment.extend(
         os.path.join(EXPERIMENTS_PATH, 'generate_molecule_dataset_from_csv.py'),
