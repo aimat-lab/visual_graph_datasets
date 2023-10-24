@@ -56,7 +56,7 @@ First clone this repository:
 
 .. code-block:: console
 
-    git clone https://github/username/visual_graph_datasets.git
+    git clone https://github/aimat-lab/visual_graph_datasets.git
 
 Then navigate into the cloned directory and install it like this:
 
