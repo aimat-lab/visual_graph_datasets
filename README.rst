@@ -174,7 +174,7 @@ folder and inherit from the base experiment.
 
 .. code-block:: python
 
-    """generate_molecule_dataset_from_csv__custom.py"""
+    """filegenerate_molecule_dataset_from_csv__custom.py"""
     import os
     from pycomex.functional.experiment import Experiment
     from pycomex.utils import folder_path, file_namespace
@@ -196,7 +196,8 @@ folder and inherit from the base experiment.
     TARGET_COLUMN_NAMES: t.List[str] = ['LogS']
 
     # This will invoke the actual implementation of the conversion. After this code has 
-    # finished executing. You can do this 
+    # finished executing, you can find the dataset folder within the 
+    # "results/generate_molecule_dataset_from_csv__custom" folder that has been created
     experiment = Experiment.extend(
         os.path.join(EXPERIMENTS_PATH, 'generate_molecule_dataset_from_csv.py'),
         base_path=folder_path(__file__),

@@ -466,6 +466,9 @@ def experiment(e: Experiment):
     )
     dataset_length = len(raw_data_list)
     e.log(f'loaded data with {dataset_length} elements')
+    
+    if e.SUBSET is not None and e.SUBSET < dataset_length:
+        dataset_length = e.SUBSET
 
     # -- Processing the dataset into visual graph dataset --
     e.log('creating the dataset folder...')
