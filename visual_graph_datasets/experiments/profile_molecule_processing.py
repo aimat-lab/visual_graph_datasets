@@ -34,7 +34,7 @@ from visual_graph_datasets.data import VisualGraphDatasetWriter
 # :param NUM_ITERATIONS:
 #       The number of iterations that the corresponding functions will consequetively be executed such that 
 #       there is the number of elements in that thing.
-NUM_ITERATIONS: int = 500
+NUM_ITERATIONS: int = 1000
 # :param VALUE:
 #       This is the SMILES string representation of the molecule that will be used (processed to graph / visualized) for 
 #       the testing purposes.
@@ -78,47 +78,6 @@ def experiment(e: Experiment):
     e['iterations'] = list(range(e.NUM_ITERATIONS))
     
     # ~ Checking the "process" function
-    # The create function will do everyting: process the smiles into a molecular graph, create the visualization 
-    # and save both of those things onto the disk.
-    create_folder = os.path.join(e.path, 'create')
-    os.mkdir(create_folder)
-    e['duration/create'] = []
-    e.log(f'starting the profiling for the "create" operation with {e.NUM_ITERATIONS} iterations...')
-    for index in range(e.NUM_ITERATIONS):
-        time_start = time.time()
-        processing.create(
-            value=e.VALUE,
-            index=index,
-            name=f'{index:04d}',
-            output_path=create_folder,
-        )
-        duration = time.time() - time_start
-        e[f'duration/create'].append(duration)
-        if index % 100 == 0:
-            e.log(f' * ({index:04d}/{e.NUM_ITERATIONS}) done - duration: {duration:.3f}s')
-    
-    # ~ Checking the "create" function usign a VgdWriter object
-    # It could make a difference if we use just the
-    writer_folder = os.path.join(e.path, 'writer')
-    os.mkdir(writer_folder)
-    writer = VisualGraphDatasetWriter(writer_folder)
-
-    e['duration/writer'] = []
-    e.log(f'starting the profiling for the "writer" operation with {e.NUM_ITERATIONS} iterations...')
-    for index in range(e.NUM_ITERATIONS):
-        time_start = time.time()
-        processing.create(
-            value=e.VALUE,
-            index=index,
-            name=f'{index:04d}',
-            writer=writer,
-        )
-        duration = time.time() - time_start
-        e[f'duration/writer'].append(duration)
-        if index % 100 == 0:
-            e.log(f' * ({index:04d}/{e.NUM_ITERATIONS}) done - duration: {duration:.3f}s')
-    
-    # ~ Checking the "process" function
     e['duration/process'] = []
     e.log(f'starting the profiling for the "process" operation with {e.NUM_ITERATIONS} iterations...')
     for index in range(e.NUM_ITERATIONS):
@@ -143,11 +102,54 @@ def experiment(e: Experiment):
             width=e.WIDTH,
             height=e.HEIGHT
         )
+        
         plt.close('all')
         duration = time.time() - time_start
         e['duration/visualize'].append(duration)
         if index % 100 == 0:
             e.log(f' * ({index:04d}/{e.NUM_ITERATIONS}) done - duration: {duration:.3f}s')
+    
+        # ~ Checking the "process" function
+        # The create function will do everyting: process the smiles into a molecular graph, create the visualization 
+        # and save both of those things onto the disk.
+        create_folder = os.path.join(e.path, 'create')
+        os.mkdir(create_folder)
+        e['duration/create'] = []
+        e.log(f'starting the profiling for the "create" operation with {e.NUM_ITERATIONS} iterations...')
+        for index in range(e.NUM_ITERATIONS):
+            time_start = time.time()
+            processing.create(
+                value=e.VALUE,
+                index=index,
+                name=f'{index:04d}',
+                output_path=create_folder,
+            )
+            duration = time.time() - time_start
+            e[f'duration/create'].append(duration)
+            if index % 100 == 0:
+                e.log(f' * ({index:04d}/{e.NUM_ITERATIONS}) done - duration: {duration:.3f}s')
+        
+        # ~ Checking the "create" function usign a VgdWriter object
+        # It could make a difference if we use just the
+        writer_folder = os.path.join(e.path, 'writer')
+        os.mkdir(writer_folder)
+        writer = VisualGraphDatasetWriter(writer_folder)
+
+        e['duration/writer'] = []
+        e.log(f'starting the profiling for the "writer" operation with {e.NUM_ITERATIONS} iterations...')
+        for index in range(e.NUM_ITERATIONS):
+            time_start = time.time()
+            processing.create(
+                value=e.VALUE,
+                index=index,
+                name=f'{index:04d}',
+                writer=writer,
+            )
+            duration = time.time() - time_start
+            e[f'duration/writer'].append(duration)
+            if index % 100 == 0:
+                e.log(f' * ({index:04d}/{e.NUM_ITERATIONS}) done - duration: {duration:.3f}s')
+                
         
 @experiment.analysis    
 def analysis(e: Experiment):
@@ -156,32 +158,34 @@ def analysis(e: Experiment):
     # We plot them over the iterations here because we are mainly interested in seeing whether 
     # there actually is an increase over time
     for key in ['create', 'writer', 'process', 'visualize']:
-        e.log(f'creating plots for key "{key}"...')
-        fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(10, 10))
-        ax.plot(
-            e['iterations'], 
-            e[f'duration/{key}'], 
-            label='raw',
-            alpha=0.5,
-        )
-        ax.plot(
-            e['iterations'][e.WINDOW_SIZE - 1:], 
-            moving_average(e[f'duration/{key}'], e.WINDOW_SIZE), 
-            label='avg'
-        )
-        ax.set_xlabel('iteration')
-        ax.set_ylabel('duration')
         
-        values_avg = np.mean(e[f'duration/{key}'])
-        values_std = np.std(e[f'duration/{key}'])
-        ax.set_title(f'Avg: {values_avg:.3f} - Std: {values_std:.3f}')
-        
-        y_min = np.percentile(e[f'duration/{key}'], 10)
-        y_max = np.percentile(e[f'duration/{key}'], 90)
-        y_diff = abs(y_max - y_min)
-        ax.set_ylim([y_min - 0.1 * y_diff, y_max + 0.1 * y_diff])
-        
-        ax.legend()
-        fig.savefig(os.path.join(e.path, f'{key}_time_over_iterations.pdf'))
+        if key in e['duration'].keys():
+            e.log(f'creating plots for key "{key}"...')
+            fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(10, 10))
+            ax.plot(
+                e['iterations'], 
+                e[f'duration/{key}'], 
+                label='raw',
+                alpha=0.5,
+            )
+            ax.plot(
+                e['iterations'][e.WINDOW_SIZE - 1:], 
+                moving_average(e[f'duration/{key}'], e.WINDOW_SIZE), 
+                label='avg'
+            )
+            ax.set_xlabel('iteration')
+            ax.set_ylabel('duration')
+            
+            values_avg = np.mean(e[f'duration/{key}'])
+            values_std = np.std(e[f'duration/{key}'])
+            ax.set_title(f'Avg: {values_avg:.3f} - Std: {values_std:.3f}')
+            
+            y_min = np.percentile(e[f'duration/{key}'], 10)
+            y_max = np.percentile(e[f'duration/{key}'], 90)
+            y_diff = abs(y_max - y_min)
+            ax.set_ylim([y_min - 0.1 * y_diff, y_max + 0.1 * y_diff])
+            
+            ax.legend()
+            fig.savefig(os.path.join(e.path, f'{key}_time_over_iterations.pdf'))
     
 experiment.run_if_main()

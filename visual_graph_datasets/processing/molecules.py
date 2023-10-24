@@ -686,7 +686,7 @@ class MoleculeProcessing(ProcessingBase):
                             value: str,
                             width: int,
                             height: int,
-                            additional_returns: dict = {},
+                            additional_returns: t.Optional[dict] = None,
                             **kwargs,
                             ) -> t.Tuple[plt.Figure, np.ndarray]:
         """
@@ -696,6 +696,18 @@ class MoleculeProcessing(ProcessingBase):
 
         This method should preferably used when directly interacting with the processing functionality
         with code.
+        
+        :param value: The domain specific string representation of the graph
+        :param width: The width of the resulting visualization image in pixels.
+        :param height: The height of the resulting visualization image in pixels.
+        :param additional_returns: Optional. A dict object can be passed to this method to collect additional 
+            returns of this method. In this specific case, this dict will contain the following keys:
+            "svg_string" - the raw string representation of the original svg string that created the molecule 
+            visualization
+            
+        :returns: a tuple where the first value is a plt.Figure object containing the visualization of the 
+            molecular graph and the second element is a numpy array of shape (V, 2) where V is the number of 
+            nodes in the graph and which assigns the 2D pixel coordinates of each of the nodes.
         """
         smiles = value
         mol = mol_from_smiles(smiles)
@@ -706,6 +718,7 @@ class MoleculeProcessing(ProcessingBase):
             image_width=width,
             image_height=height
         )
+        
         # The "node_positions" which are returned by the above function are values within the axes object
         # coordinate system. Using the following piece of code we transform these into the actual pixel
         # coordinates of the figure image.
@@ -713,7 +726,13 @@ class MoleculeProcessing(ProcessingBase):
                           for x, y in node_positions]
         node_positions = np.array(node_positions)
 
-        additional_returns['svg_string'] = svg_string
+        # 24.10.23 - made the additional returns optional and checking for the None state here because that 
+        # is better practice than having a mutable dictionary instance as a default value of a method argument.
+        if additional_returns is not None:
+            additional_returns['svg_string'] = svg_string
+
+        # 24.10.23 - Desperate attempt to somehow fix the performance degradation of this method.
+        del ax, mol
 
         return fig, node_positions
 
@@ -823,10 +842,6 @@ class MoleculeProcessing(ProcessingBase):
 
             metadata_path = os.path.join(output_path, f'{index}.json')
             self.save_metadata(metadata, metadata_path)
-
-        # if create_svg:
-        #     svg_path = os.path.join(output_path, f'{index}.svg')
-        #     self.save_svg(svg_string, svg_path)
 
         return metadata
 
