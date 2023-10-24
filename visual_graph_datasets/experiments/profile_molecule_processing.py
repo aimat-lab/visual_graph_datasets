@@ -24,6 +24,7 @@ import matplotlib.pyplot as plt
 from pycomex.functional.experiment import Experiment
 from pycomex.util import file_namespace, folder_path
 
+from visual_graph_datasets.visualization.base import create_frameless_figure
 from visual_graph_datasets.processing.molecules import MoleculeProcessing
 from visual_graph_datasets.data import VisualGraphDatasetWriter
 
@@ -34,7 +35,7 @@ from visual_graph_datasets.data import VisualGraphDatasetWriter
 # :param NUM_ITERATIONS:
 #       The number of iterations that the corresponding functions will consequetively be executed such that 
 #       there is the number of elements in that thing.
-NUM_ITERATIONS: int = 1000
+NUM_ITERATIONS: int = 100
 # :param VALUE:
 #       This is the SMILES string representation of the molecule that will be used (processed to graph / visualized) for 
 #       the testing purposes.
@@ -88,6 +89,23 @@ def experiment(e: Experiment):
         if index % 100 == 0:
             e.log(f' * ({index:04d}/{e.NUM_ITERATIONS}) done - duration: {duration:.3f}s')
             
+    # ~ Checking the "create_frameless_figure" function
+    e['duration/figure'] = []
+    e.log(f'starting the profiling for the "create_frameless_figure" operation with {e.NUM_ITERATIONS} iterations...')
+    for index in range(e.NUM_ITERATIONS):
+        time_start = time.time()
+        fig, ax = create_frameless_figure(
+            width=e.WIDTH,
+            height=e.HEIGHT,
+        )
+        plt.close(fig)
+        del fig, ax
+        
+        duration = time.time() - time_start
+        e['duration/figure'].append(duration)
+        if index % 100 == 0:
+            e.log(f' * ({index:04d}/{e.NUM_ITERATIONS}) done - duration: {duration:.3f}s')
+             
     # ~ Checking the "visualize" function
     # Actually in this case we will just check the visualize_as_figure function which means that 
     # we will not actually write the image to the disk. The advantage of doing it like this will be 
@@ -109,46 +127,46 @@ def experiment(e: Experiment):
         if index % 100 == 0:
             e.log(f' * ({index:04d}/{e.NUM_ITERATIONS}) done - duration: {duration:.3f}s')
     
-        # ~ Checking the "process" function
-        # The create function will do everyting: process the smiles into a molecular graph, create the visualization 
-        # and save both of those things onto the disk.
-        create_folder = os.path.join(e.path, 'create')
-        os.mkdir(create_folder)
-        e['duration/create'] = []
-        e.log(f'starting the profiling for the "create" operation with {e.NUM_ITERATIONS} iterations...')
-        for index in range(e.NUM_ITERATIONS):
-            time_start = time.time()
-            processing.create(
-                value=e.VALUE,
-                index=index,
-                name=f'{index:04d}',
-                output_path=create_folder,
-            )
-            duration = time.time() - time_start
-            e[f'duration/create'].append(duration)
-            if index % 100 == 0:
-                e.log(f' * ({index:04d}/{e.NUM_ITERATIONS}) done - duration: {duration:.3f}s')
-        
-        # ~ Checking the "create" function usign a VgdWriter object
-        # It could make a difference if we use just the
-        writer_folder = os.path.join(e.path, 'writer')
-        os.mkdir(writer_folder)
-        writer = VisualGraphDatasetWriter(writer_folder)
+    # ~ Checking the "process" function
+    # The create function will do everyting: process the smiles into a molecular graph, create the visualization 
+    # and save both of those things onto the disk.
+    create_folder = os.path.join(e.path, 'create')
+    os.mkdir(create_folder)
+    e['duration/create'] = []
+    e.log(f'starting the profiling for the "create" operation with {e.NUM_ITERATIONS} iterations...')
+    for index in range(e.NUM_ITERATIONS):
+        time_start = time.time()
+        processing.create(
+            value=e.VALUE,
+            index=index,
+            name=f'{index:04d}',
+            output_path=create_folder,
+        )
+        duration = time.time() - time_start
+        e[f'duration/create'].append(duration)
+        if index % 100 == 0:
+            e.log(f' * ({index:04d}/{e.NUM_ITERATIONS}) done - duration: {duration:.3f}s')
+    
+    # ~ Checking the "create" function usign a VgdWriter object
+    # It could make a difference if we use just the
+    writer_folder = os.path.join(e.path, 'writer')
+    os.mkdir(writer_folder)
+    writer = VisualGraphDatasetWriter(writer_folder)
 
-        e['duration/writer'] = []
-        e.log(f'starting the profiling for the "writer" operation with {e.NUM_ITERATIONS} iterations...')
-        for index in range(e.NUM_ITERATIONS):
-            time_start = time.time()
-            processing.create(
-                value=e.VALUE,
-                index=index,
-                name=f'{index:04d}',
-                writer=writer,
-            )
-            duration = time.time() - time_start
-            e[f'duration/writer'].append(duration)
-            if index % 100 == 0:
-                e.log(f' * ({index:04d}/{e.NUM_ITERATIONS}) done - duration: {duration:.3f}s')
+    e['duration/writer'] = []
+    e.log(f'starting the profiling for the "writer" operation with {e.NUM_ITERATIONS} iterations...')
+    for index in range(e.NUM_ITERATIONS):
+        time_start = time.time()
+        processing.create(
+            value=e.VALUE,
+            index=index,
+            name=f'{index:04d}',
+            writer=writer,
+        )
+        duration = time.time() - time_start
+        e[f'duration/writer'].append(duration)
+        if index % 100 == 0:
+            e.log(f' * ({index:04d}/{e.NUM_ITERATIONS}) done - duration: {duration:.3f}s')
                 
         
 @experiment.analysis    
@@ -157,7 +175,7 @@ def analysis(e: Experiment):
     # Now that we have collected all the durations we can plot them over the iterations.
     # We plot them over the iterations here because we are mainly interested in seeing whether 
     # there actually is an increase over time
-    for key in ['create', 'writer', 'process', 'visualize']:
+    for key in ['create', 'writer', 'process', 'figure', 'visualize']:
         
         if key in e['duration'].keys():
             e.log(f'creating plots for key "{key}"...')
