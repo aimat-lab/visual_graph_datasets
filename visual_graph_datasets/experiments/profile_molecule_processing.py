@@ -20,6 +20,7 @@ import tempfile
 import typing as t
 
 import numpy as np
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 from pycomex.functional.experiment import Experiment
 from pycomex.util import file_namespace, folder_path
@@ -27,6 +28,9 @@ from pycomex.util import file_namespace, folder_path
 from visual_graph_datasets.visualization.base import create_frameless_figure
 from visual_graph_datasets.processing.molecules import MoleculeProcessing
 from visual_graph_datasets.data import VisualGraphDatasetWriter
+
+mpl.use('TkAgg')
+plt.ioff()
 
 # == PROFILING PARAMETERS ==
 # These parameters actually are relevant for the profiling itself, such as the number of iterations

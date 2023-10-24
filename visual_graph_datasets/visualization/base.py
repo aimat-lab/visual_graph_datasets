@@ -70,7 +70,6 @@ def create_frameless_figure(width: int = 100,
     # method of the figure object. Since the saving process will come later we make sure that the correct
     # parameters are used by overriding the default parameters for the savefig method here
     def savefig(this, *args, **kwargs):
-
         this._savefig(*args, dpi=100 * ratio, **kwargs)
 
     setattr(fig, '_savefig', fig.savefig)

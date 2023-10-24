@@ -202,7 +202,7 @@ def ensure_dataset(dataset_name: str,
                    config: Config = Config(), 
                    provider_id: str = 'main',
                    logger: logging.Logger = NULL_LOGGER,
-                   ) -> bool:
+                   ) -> str:
     """
     Makes sure that the dataset with the given ``dataset_name`` exists on the local system. If that dataset does not 
     yet exist on the local system it will be downloaded from the file share identified by the given ``provider_id`` and 
@@ -211,8 +211,7 @@ def ensure_dataset(dataset_name: str,
     Therefore, after this function has successfully terminated, one can be sure that the requested dataset does exist
     within the ``config.get_datasets_path`` folder!
     
-    :returns: A boolean value which is true if the dataset has been downloaded in this function call and Fasle if the 
-        dataset already exists on the system.
+    :returns: The string absolute path to the dataset folder on the local machine
     """
     dataset_path = os.path.join(config.get_datasets_path(), dataset_name)
     if not os.path.exists(dataset_path):
@@ -222,8 +221,8 @@ def ensure_dataset(dataset_name: str,
         
         # Here we actually download the dataset with the given name
         file_share.download_dataset(dataset_name, config.get_datasets_path())
-        
-        return True
+
     else:
         logger.info(f'the dataset "{dataset_name}" already exists locally! Skipping download.')
-        return False
+        
+    return dataset_path
