@@ -140,6 +140,11 @@ TARGET_COLUMN_NAMES: t.List[str] = ['LogS']
 #       This dictionary may be empty and then no information about splits will be added to the dataset at all.
 SPLIT_COLUMN_NAMES: t.Dict[int, str] = {
 }
+# :param SUBSET:
+#       Optional. This can be used to set a number of elements after which to terminate the processing procedure. 
+#       If this is None, the whole dataset will be processed. This feature can be useful if only a certain 
+#       part of the datase should be processed or for testing reasons for example.
+SUBSET: t.Optional[int] = None
 
 # == PROCESSING PARAMETERS ==
 # These parameters control the processing of the raw SMILES into the molecule representations with RDKit
@@ -627,14 +632,6 @@ def experiment(e: Experiment):
             time_previous = time.time()
             
             gc.collect()
-
-        index += 1
-        
-        # 05.06.23 - This is an attempt to tackle the massive performance issues with this script.
-        # This will supposedly completely clean the internal matplotlib state because I have the
-        # suspicion that this might be the problem.
-        plt.clf()
-        plt.close('all')
         
         # 19.10.23 - This is another potential source for memory issues. Further above we are creating 
         # a mol object for every one of the smiles strings and they were never cleared. Even though a 
@@ -642,6 +639,13 @@ def experiment(e: Experiment):
         # for systems with low memory.
         del additional_graph_data, additional_metadata, data, mol, target
         del d['mol'], d['smiles'], d['target'], d['data']
+        
+        index += 1
+        
+        # 24.10.23 - Added the option to terminate the loop after a certain number of elements have been 
+        # processed already.
+        if e.SUBSET is not None and index > e.SUBSET:
+            break
         
     e.commit_json('omitted_elements.json', omitted_elements)
     e.log(f'created {index} out of {dataset_length} original elements. '
