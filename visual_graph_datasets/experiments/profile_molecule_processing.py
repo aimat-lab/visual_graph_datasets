@@ -29,7 +29,7 @@ from visual_graph_datasets.visualization.base import create_frameless_figure
 from visual_graph_datasets.processing.molecules import MoleculeProcessing
 from visual_graph_datasets.data import VisualGraphDatasetWriter
 
-mpl.use('TkAgg')
+mpl.use('Agg')
 plt.ioff()
 
 # == PROFILING PARAMETERS ==
@@ -102,13 +102,19 @@ def experiment(e: Experiment):
             width=e.WIDTH,
             height=e.HEIGHT,
         )
+        plt.cla()
+        plt.clf()
         plt.close(fig)
+        plt.close()
+        del fig.savefig
         del fig, ax
         
         duration = time.time() - time_start
         e['duration/figure'].append(duration)
         if index % 100 == 0:
             e.log(f' * ({index:04d}/{e.NUM_ITERATIONS}) done - duration: {duration:.3f}s')
+       
+    return
              
     # ~ Checking the "visualize" function
     # Actually in this case we will just check the visualize_as_figure function which means that 
