@@ -1,5 +1,5 @@
 """
-This experiment processes the "bbbp" dataset which is a small of organic molecules
+This experiment processes the BBBP dataset which is a small of organic molecules
 which are divided into the two classes "pass" and "non-pass" in respect to the human blood brain barrier
 
 CHANGELOG
@@ -27,7 +27,7 @@ FILE_SHARE_PROVIDER: str = 'main'
 #    the VGD conversion
 # 2. A valid relative path to a CSV file stashed on the given vgd file share provider which will be
 #    downloaded first and then processed.
-CSV_FILE_NAME: str = os.path.join(ASSETS_PATH, 'bbbp.csv')
+CSV_FILE_NAME: str = 'source/bbbp.csv'
 # Optionally, this may define the string name of the CSV column which contains the integer index
 # associated with each dataset element. If this is not given, then integer indices will be randomly
 # generated for each element in the final VGD
@@ -40,16 +40,30 @@ TARGET_TYPE: str = 'classification'
 TARGET_COLUMN_NAMES: t.List[str] = ['non-pass', 'pass']
 
 # == DATASET PARAMETERS ==
-# These parameters control aspects of the visual graph dataset creation process
+# These parameters control aspects of the visual graph dataset creation process. This for example includes 
+# the dimensions of the graph visualization images to be created or the name of the visual graph dataset 
+# that should be given to the dataset folder.
 
-# The name given to the visual graph dataset folder which will be created.
+# :param DATASET_CHUNK_SIZE:
+#       This number will determine the chunking of the dataset. Dataset chunking will split the dataset
+#       elements into multiple sub folders within the main VGD folder. Especially for larger datasets
+#       this should increase the efficiency of subsequent IO operations.
+#       If this is None then no chunking will be applied at all and everything will be placed into the
+#       top level folder.
+DATASET_CHUNK_SIZE: t.Optional[int] = None
+# :param DATASET_NAME:
+#       The name given to the visual graph dataset folder which will be created.
 DATASET_NAME: str = 'bbbp'
-# The width and height of the molecule visualization PNGs in pixels.
+# :param IMAGE_WIDTH:
+#       The width molecule visualization PNG image
 IMAGE_WIDTH: int = 1000
+# :param IMAGE_HEIGHT:
+#       The height of the molecule visualization PNG image
 IMAGE_HEIGHT: int = 1000
-# This dict will be converted into the .meta.yml file which will be added to the final visual graph dataset
-# folder. This is an optional file, which can add additional meta information about the entire dataset
-# itself. Such as documentation in the form of a description of the dataset etc.
+# :parm DATASET_META:
+#       This dict will be converted into the .meta.yml file which will be added to the final visual graph dataset
+#       folder. This is an optional file, which can add additional meta information about the entire dataset
+#       itself. Such as documentation in the form of a description of the dataset etc.
 DATASET_META: t.Optional[dict] = {
     'version': '0.1.0',
     # A list of strings where each element is a description about the changes introduced in a newer
@@ -80,6 +94,14 @@ DATASET_META: t.Optional[dict] = {
         1: 'one-hot: pass class'
     }
 }
+# :param GRAPH_METADATA_CALLBACKS:
+#       This is a dictionary that can be use to define additional information that should be extracted from the 
+#       the csv file and to be transferred to the metadata dictionary of the visual graph dataset elements.
+#       The keys of this dict should be the string names that the properties will then have in the final metadata 
+#       dictionary. The values should be callback functions with two parameters: "mol" is the rdkit molecule object 
+#       representation of each dataset element and "data" is the corresponding dictionary containing all the 
+#       values from the csv file indexed by the names of the columns. The function itself should return the actual 
+#       data to be used for the corresponding custom property. 
 GRAPH_METADATA_CALLBACKS = {
     'name': lambda mol, data: data['name'],
     'label': lambda mol, data: data['label'],
@@ -90,7 +112,6 @@ GRAPH_METADATA_CALLBACKS = {
 EVAL_LOG_STEP = 100
 NUM_BINS = 10
 PLOT_COLOR = 'gray'
-
 
 experiment = Experiment.extend(
     'generate_molecule_dataset_from_csv.py',

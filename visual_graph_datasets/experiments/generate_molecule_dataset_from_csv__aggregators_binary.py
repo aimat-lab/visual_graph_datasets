@@ -3,28 +3,19 @@ This experiment processes the aggregators dataset. This is orignally a dataset c
 that are annotated with a binary classification label that identifies them as either an aggregator or a 
 non-aggregator.
 
-This experiment in particular processes a modified version of this dataset which takes into account different 
-protonation states. For a chemical environment with a given pH value, not all of the hydrogen atoms (protons) might 
-be attached to the molecule, but instead some of the atoms might exist in their charged form. In this modified 
-dataset all the molecules are replaced with all it's possible protonated versions under normal conditions.
+CHANGELOG
 
-**CHANGELOG**
-
-20.10.23 - initial version
+0.1.0 - 23.02.2023 - initial version
 """
 import os
 import pathlib
 import typing as t
 
-import numpy as np
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-
+# from pycomex.experiment import SubExperiment
+# from pycomex.util import Skippable
 from pycomex.functional.experiment import Experiment
-from pycomex.utils import file_namespace, folder_path
-from visual_graph_datasets.util import get_experiment_path
+from pycomex.utils import folder_path, file_namespace
 
-np.set_printoptions(precision=2)
 
 PATH = pathlib.Path(__file__).parent.absolute()
 ASSETS_PATH = os.path.join(PATH, 'assets')
@@ -46,9 +37,9 @@ FILE_SHARE_PROVIDER: str = 'main'
 #       the VGD conversion
 #       2. A valid relative path to a CSV file stashed on the given vgd file share provider which will be
 #       downloaded first and then processed.
-CSV_FILE_NAME: str = 'source/aggregators_binary_protonated.csv'
+CSV_FILE_NAME: str = os.path.join(ASSETS_PATH, 'aggregators_binary.csv')
 # :param INDEX_COLUMN_NAME:
-#       Optionally, this may define the string name of the CSV column which contains the integer index
+#       (Optional) this may define the string name of the CSV column which contains the integer index
 #       associated with each dataset element. If this is not given, then integer indices will be randomly
 #       generated for each element in the final VGD
 INDEX_COLUMN_NAME: t.Optional[str] = None
@@ -56,15 +47,15 @@ INDEX_COLUMN_NAME: t.Optional[str] = None
 #       This has to be the string name of the CSV column which contains the SMILES string representation of
 #       the molecule.
 SMILES_COLUMN_NAME: str = 'smiles'
-# :param TARGET_TYPE: 
-#       This has to be the string name of the type of dataset that we are working with here. THis is either 
-#       classification or regression.
+# :param TARGET_TYPE:
+#       This has to be the string name of the type of dataset that the source file represents. The valid 
+#       options here are "regression" and "classification"
 TARGET_TYPE: str = 'classification'
 # :param TARGET_COLUMN_NAMES:
-#       This has to be a list that specifies the string names of all the columns of the source file that 
-#       contain the information about the target value annotations. For a classification dataset all the 
-#       possible classes have to be represented as their own columns and the corresponding values have 
-#       to be either 0 or 1 to indicate whether that class applies for a given element or not.
+#       This has to be a list of string column names within the source CSV file, where each name defines 
+#       one column that contains a target value for each row. In the regression case, this may be multiple 
+#       different regression targets for each element and in the classification case there has to be one 
+#       column per class.
 TARGET_COLUMN_NAMES: t.List[str] = ['aggregator', 'nonaggregator']
 
 # == DATASET PARAMETERS ==
@@ -72,26 +63,32 @@ TARGET_COLUMN_NAMES: t.List[str] = ['aggregator', 'nonaggregator']
 # the dimensions of the graph visualization images to be created or the name of the visual graph dataset 
 # that should be given to the dataset folder.
 
+# :param DATASET_CHUNK_SIZE:
+#       This number will determine the chunking of the dataset. Dataset chunking will split the dataset
+#       elements into multiple sub folders within the main VGD folder. Especially for larger datasets
+#       this should increase the efficiency of subsequent IO operations.
+#       If this is None then no chunking will be applied at all and everything will be placed into the
+#       top level folder.
+DATASET_CHUNK_SIZE: t.Optional[int] = 10_000
 # :param DATASET_NAME:
 #       The name given to the visual graph dataset folder which will be created.
 DATASET_NAME: str = 'aggregators_binary'
 # :param IMAGE_WIDTH:
-#       The width of the visualization images that will be created for all the elements, in pixels
+#       The width molecule visualization PNG image
 IMAGE_WIDTH: int = 1000
 # :param IMAGE_HEIGHT:
-#       The height of the visualization images that will be created for all the elements, in pixels
+#       The height of the molecule visualization PNG image
 IMAGE_HEIGHT: int = 1000
-# :param DATASET_META:
+# :parm DATASET_META:
 #       This dict will be converted into the .meta.yml file which will be added to the final visual graph dataset
 #       folder. This is an optional file, which can add additional meta information about the entire dataset
 #       itself. Such as documentation in the form of a description of the dataset etc.
 DATASET_META: t.Optional[dict] = {
-    'version': '0.2.0',
+    'version': '0.1.0',
     # A list of strings where each element is a description about the changes introduced in a newer
     # version of the dataset.
     'changelog': [
-        '0.1.0 - 29.01.2023 - initial version',
-        '0.2.0 - 01.06.2023 - Now uses the protonated version of the dataset.'
+        '0.1.0 - 29.01.2023 - initial version'
     ],
     # A general description about the dataset, which gives a general overview about where the data was
     # sampled from, what the input features look like, what the prediction target is etc...
@@ -116,39 +113,64 @@ DATASET_META: t.Optional[dict] = {
         1: 'one-hot: non-aggregator class'
     }
 }
-# :param GRAPH_METADATA_CALLBACKS:
-#       This dictionary can be used to add additional functions that can extract data from the original molecule 
-#       and csv data row objects to save as additonal metadata to the graph structure of the visual graph dataset.
 GRAPH_METADATA_CALLBACKS = {
-    # 'name': lambda mol, data: data['name'],
-    # 'label': lambda mol, data: data['label'],
+    'name': lambda mol, data: data['name'],
+    'label': lambda mol, data: data['label'],
     'smiles': lambda mol, data: data['smiles'],
-    'index_original': lambda mol, data: data['index_original'] if 'index_original' in data else data['index'],
-    'smiles_origianl': lambda mol, data: data['smiles_orignal'] if 'smiles_orginal' in data else '',
 }
-# :param DATASET_CHUNK_SIZE:
-#       Larger visual graph datasets will be saved in chunks, which means that the dataset folder itself
-#       will not contain all the files directly but will rather consist of several chunk folders which then 
-#       contain the actual data. This parameter controls how many files each chunk will consist of.
-DATASET_CHUNK_SIZE: int = 10_000
 
 # == EVALUATION PARAMETERS ==
-# These parameters control the behavior of the various evaluation functions of the experiment which mainly 
-# includes the logging and plotting facilities.
+# These parameters control the evaluation process which included the plotting of the dataset statistics 
+# after the dataset has been completed for example.
 
-EVAL_LOG_STEP: int = 1000
-NUM_BINS: int = 10
-PLOT_COLOR: str = 'gray'
+# :param EVAL_LOG_STEP:
+#       The number of iterations after which to print a log message
+EVAL_LOG_STEP = 100
+# :param NUM_BINS:
+#       The number of bins to use for the histogram 
+NUM_BINS = 10
+# :param PLOT_COLOR:
+#       The color to be used for the plots
+PLOT_COLOR = 'gray'
 
-__DEBUG__ = False
+# == EXPERIMENT PARAMETERS ==
 
 experiment = Experiment.extend(
-    # We can exploit the base implementation of the molecule dataset processing experiment that is already 
-    # part of the visual_graph_dataset library.
-    get_experiment_path('generate_molecule_dataset_from_csv.py'),
+    'generate_molecule_dataset_from_csv.py',
     base_path=folder_path(__file__),
     namespace=file_namespace(__file__),
-    glob=globals()
+    glob=globals(),
 )
+
+
+# ~ Adding filters to the dataset processing step
+# By adding these specific filters to the pre-processing of the dataset we implement the same processing
+# steps described in the original paper which introduces this dataset.
+
+def max_graph_size(mol, data):
+    """
+    We want to filter the very big molecules because we will likely not be able to properly visualize
+    those for the explanations anyways.
+    """
+    return len(mol.GetAtoms()) >= 100
+
+
+def is_charged(mol, data):
+    smiles = data['smiles']
+    return '+' in smiles or '-' in smiles
+
+
+def is_adjoined_mixture(mol, data):
+    smiles = data['smiles']
+    return '.' in smiles
+
+
+# Here we add our own custom filter to the list of filters that are applied on the dataset
+@experiment.hook('modify_filter_callbacks')
+def add_filters(e: Experiment, filter_callbacks: t.List[t.Callable]):
+    # filter_callbacks.append(is_charged)
+    filter_callbacks.append(is_adjoined_mixture)
+    return filter_callbacks
+
 
 experiment.run_if_main()

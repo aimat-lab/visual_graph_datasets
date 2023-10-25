@@ -331,7 +331,7 @@ Bugfixes
 
 - Fixed a bug where the CogilesEncoder duplicated edges in some very weird edge cases!
 
-0.13.5 - 23.10.2023
+0.14.0 - 25.10.2023
 -------------------
 
 - Added the experiment ``profile_molecule_processing.py`` to profile and plot the runtime of the different 
@@ -343,3 +343,10 @@ Bugfixes
 - Modified the generation of the QM9 dataset in ``generate_molecule_dataset_from_csv__qm9.py``
 - Added the new experiment file ``generate_molecule_dataset_from_csv__qm9sub.py`` which generates the QM9 sub 
   dataset which is a smaller subset of QM9 with only 22k elements and 9 target columns.
+- Added the new experiment ``generate_molecule_dataset_from_csv__aggregators_binary_protonated`` which processes the 
+  larger version of the aggregators dataset where each individual molecule is replaced by all it's protonated variants
+- Added the new *background* flavor of visualizing the attributional graph masks. In this method, a filled light green circle 
+  will be painted behind the nodes of the graph.
+- Slightly modified the ``ensure_dataset`` function
+- Updated the readme file
+- Updated the documentation of the standard sub experiments for ``generate_molecule_dataset_from_csv.py``
