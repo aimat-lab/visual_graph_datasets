@@ -391,6 +391,33 @@ class DatasetReaderBase:
                 break
 
         return self.index_data_map
+    
+    def read_indices(self, indices: t.List[int]) -> t.List[dict]:
+        """
+        This method actually reads a subset of the dataset from the disk and returns a list containing the corresponding 
+        data dictionaries for the read elements.
+
+        The main advantage of this method is that it allows for index duplicates! So it is possible for any index 
+        to appear multiple times in the index list which will also result in the corresponding element to be 
+        added to the returned list of elements the same number of times.
+        
+        :returns: A list of dictionaries, where each dictionary is a data dictionary that describes one visual 
+            graph element.
+        """
+        raise NotImplemented()
+
+    def chunk_iterator(self) -> dict:
+        for chunk_index, names in self.chunk_map.items():
+            
+            chunk_path = self.chunk_paths[chunk_index]
+            index_data_map = {}
+            
+            for name in sorted(names):
+                data = self.read_element(chunk_path, name)
+                index = data['metadata']['index']
+                index_data_map[index] = data
+                
+            yield index_data_map
 
     # Reading dataset metadata
 
@@ -430,6 +457,13 @@ class DatasetReaderBase:
             data = yaml.load(file, yaml.FullLoader)
 
         return data
+    
+    def __len__(self) -> int:
+        length = 0
+        for _, names in self.chunk_map.items():
+            length += len(names)
+            
+        return length
 
     @classmethod
     def safe_list_remove(cls, lst: list, value: t.Any) -> None:
