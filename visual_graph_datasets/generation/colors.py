@@ -12,6 +12,7 @@ import visual_graph_datasets.typing as tc
 # Global variables for RGB codes
 WHITE = (1., 1., 1.)
 GRAY = (0.8, 0.8, 0.8)
+LIGHT_GRAY = (0.3, 0.3, 0.3)
 BLACK = (0., 0., 0)
 RED = (1., 0., 0.)
 YELLOW = (1., 1., 0.)
@@ -19,6 +20,10 @@ GREEN = (0., 1., 0.)
 CYAN = (0., 1., 1.)
 BLUE = (0., 0., 1.)
 MAGENTA = (1., 0., 1.)
+INDIGO = (0.5, 0.5, 1.0)
+ORANGE = (1.0, 0.5, 0.0)
+TEAL = (0.0, 0.5, 0.5)
+PURPLE = (0.5, 0.0, 0.5)
 
 DEFAULT_COLORS = [
     GRAY,

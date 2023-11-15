@@ -65,7 +65,17 @@ class ColorProcessing(ProcessingBase):
                             *args,
                             **kwargs,
                             ) -> t.Tuple[plt.Figure, np.ndarray]:
-        g = self.process(value)
+        # 15.11.23
+        # Changed this section to provide the option to directly provide the graph dict representation 
+        # instead of the domain specific representation. This actually makes more sense when generating 
+        # color datasets because then we don't have to do a redundant conversion to and from COGILES. 
+        if 'graph' in kwargs:
+            g = kwargs['graph']
+        # The default case, if the graph is not given, of course is still to use the given cogiles 
+        # domain representation.
+        else: 
+            g = self.process(value)
+        
         node_positions = layout_node_positions(
             g=g,
             layout_cb=self.LAYOUT_STRATEGY_MAP[layout_strategy],
