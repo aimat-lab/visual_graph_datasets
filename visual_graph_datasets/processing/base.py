@@ -850,3 +850,34 @@ def create_processing_module(processing: ProcessingBase,
         'imports_code': imports_code
     }
     return template.render(context)
+
+
+def graph_count_motif(graph: tv.GraphDict,
+                      motif: tv.GraphDict,
+                      processing: ProcessingBase,
+                      ) -> int:
+    """
+    This function counts how often the subgraph ``motif`` appears in the overall ``graph`` structure.
+    the function also requires a graph Processing instance ``processing`` to be passed as a parameter. The 
+    node_match and edge_match methods defined for that processing instance will determine what kinds of 
+    node and edge attributes are semantically relevant for matching the motif. The function will return 
+    the integer number of times the graph isomorphism engine has found the motif within the overall graph.
+    
+    :param graph: The graph dict representation of the larger graph
+    :param motif: The graph dict representation of the motif that is to be found in the larger graph
+    :param processing: An instance of a ProcessingBase subclass for a specific graph family (such as 
+        color graphs or molecular graphs)
+        
+    :returns: The integer number of matches
+    """
+    graph_nx = nx_from_graph(graph)
+    motif_nx = nx_from_graph(motif)
+    
+    matcher = nx.isomorphism.GraphMatcher(
+        graph_nx, 
+        motif_nx, 
+        node_match=lambda a, b: processing.node_match(a['node_attributes'], b['node_attributes']),
+        edge_match=lambda a, b: processing.edge_match(a['edge_attributes'], b['edge_attributes']),
+    )
+    count = sum([1 for _ in matcher.subgraph_isomorphisms_iter()])
+    return count
