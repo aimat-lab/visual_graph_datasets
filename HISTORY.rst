@@ -356,3 +356,9 @@ Bugfixes
 
 - Added a utility function to count how often a subgraph motif appears in a larger graph
 - Added experiment ``analyze_color_graph_dataset.py`` to analyze the properties of color graph based datasets
+
+0.14.2 - 22.01.2024
+-------------------
+
+- Fixed a minor issue where the datasets folder was not created during the ``config`` initialization which 
+  has led to errors when trying to download a dataset.

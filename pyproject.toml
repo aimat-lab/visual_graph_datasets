@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "visual_graph_datasets"
-version = "0.14.1"
+version = "0.14.2"
 description = "Datasets for the training of graph neural networks (GNNs) and subsequent visualization of attributional explanations of XAI methods"
 license = "MIT"
 authors = ["awa59kst120df <awa59kst120df@gmail.com>"]
