@@ -350,3 +350,9 @@ Bugfixes
 - Slightly modified the ``ensure_dataset`` function
 - Updated the readme file
 - Updated the documentation of the standard sub experiments for ``generate_molecule_dataset_from_csv.py``
+
+0.14.1 - 02.01.2024
+-------------------
+
+- Added a utility function to count how often a subgraph motif appears in a larger graph
+- Added experiment ``analyze_color_graph_dataset.py`` to analyze the properties of color graph based datasets
