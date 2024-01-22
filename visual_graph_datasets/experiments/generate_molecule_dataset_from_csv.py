@@ -553,6 +553,12 @@ def experiment(e: Experiment):
             data=data,
         )
 
+        # 04.12.23
+        # This might seem redundant since we could just use the target value from above and in most cases
+        # this will evaluate to the same value anyways, but doing it like this enables the possibility to 
+        # modify the target value within the filter hook addtional_graph_data and have those changes be 
+        # reflected here as well 
+        target = additional_graph_data['graph_labels']
         additional_metadata = {
             'target': target
         }
@@ -656,13 +662,13 @@ def experiment(e: Experiment):
 
     e.log('generating dataset metadata...')
     metadata_map = {}
-    metadata_map.update(generate_visual_graph_dataset_metadata(index_data_map))
+    # metadata_map.update(generate_visual_graph_dataset_metadata(index_data_map))
     metadata_map.update(DATASET_META)
 
     # 21.03.2023 - Another cool feature of the Processing class: This method will automatically create a
     # dictionary that contains natural language descriptions for all the elements of the node, edge and
     # graph attribute vectors.
-    metadata_map.update(PROCESSING.get_description_map())
+    #metadata_map.update(PROCESSING.get_description_map())
 
     yaml_path = os.path.join(dataset_path, '.meta.yml')
     with open(yaml_path, mode='w') as file:

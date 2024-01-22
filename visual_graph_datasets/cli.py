@@ -174,7 +174,7 @@ def edit_config(ctx,
     """
     Opens the config file in the systems default text editor.
     """
-    config = ctx.obj
+    config: Config = ctx.obj
 
     # As the first thing we need to check if a config file even already exists, if that is not the case
     # then we first need to create a config file!
@@ -186,13 +186,19 @@ def edit_config(ctx,
         folder_path = os.path.dirname(CONFIG_PATH)
         ensure_folder(folder_path)
 
+        datasets_path = config.get_datasets_path()
+
         # Then we create the file from the template
         template = TEMPLATE_ENV.get_template('config.yaml.j2')
         content = template.render(**{
-            'datasets_path': config.get_datasets_path()
+            'datasets_path': datasets_path,
         })
         with open(CONFIG_PATH, mode='w') as file:
             file.write(content)
+        
+        # 22.01.24
+        # We need to make sure that the dataset path exists - this has led to problems before
+        ensure_folder(datasets_path)
 
         # After the file is created, we load into the config singleton just to make sure
         echo_success(f'created a new config file at "{CONFIG_PATH}"')

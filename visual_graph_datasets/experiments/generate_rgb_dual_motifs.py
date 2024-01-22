@@ -34,11 +34,11 @@ mpl.use('Agg')
 
 # :param NUM_ELEMENTS:
 #       The number of elements to be created for the dataset
-NUM_ELEMENTS: int = 1_000
+NUM_ELEMENTS: int = 10_000
 # :param NUM_NODES_RANGE:
 #       A tuple that defines the range for the possible number of nodes in each graph element. Inside this 
 #       range the actual number will be sampled uniformly for each element.
-NUM_NODES_RANGE: tuple = (40, 80)
+NUM_NODES_RANGE: tuple = (25, 40)
 # :param NUM_EDGES_RANGE:
 #       A tuple that defines the range for the possible numbers of additional edges in each graph element.
 #       Inside this range the actual number will be sampled uniformly for each element.
@@ -52,15 +52,14 @@ NUM_MOTIFS: int = 4
 COLORS: t.List[list] = [
     # This makes gray nodes twice as probable, which in turn just makes all the tasks a little bit easier
     # since there are now relatively less actualy colorful nodes that could interfere with one of the tasks.
-    GRAY, GRAY, GRAY,
+    GRAY,
     RED,
     GREEN,
     BLUE,
     MAGENTA,
     CYAN,
     YELLOW,
-    PURPLE,
-    ORANGE,
+    TEAL,
 ]
 COLOR_POS: list = ORANGE
 COLOR_NEG: list = PURPLE
@@ -73,76 +72,76 @@ MOTIF_MAP: dict = {
     'red_pos_ring': {
         'suffix': 'r', 
         'name': 'red_pos_ring',
-        'graph': make_ring_motif(COLOR_POS, RED, 3),
-        'value': 1.3, 
+        'graph': make_ring_motif(YELLOW, RED, 3),
+        'value': 1.0, 
     },
     'red_pos_star': {
         'suffix': 'r', 
         'name': 'red_pos_star',
-        'graph': make_star_motif(COLOR_POS, RED, 3),
-        'value': 3.6,
+        'graph': make_star_motif(YELLOW, RED, 3),
+        'value': 3.0,
     },
     'red_neg_ring': {
         'suffix': 'r', 
         'name': 'red_neg_ring',
-        'graph': make_ring_motif(COLOR_NEG, RED, 3),
-        'value': -1.3,
+        'graph': make_ring_motif(YELLOW, MAGENTA, 3),
+        'value': -1.0,
     },
     'red_neg_star': {
         'suffix': 'r', 
         'name': 'red_neg_star',
-        'graph': make_star_motif(COLOR_NEG, RED, 3),
-        'value': -3.6,
+        'graph': make_star_motif(YELLOW, MAGENTA, 3),
+        'value': -3.0,
     },
     # the blue motifs
     'blue_pos_ring': {
         'suffix': 'b', 
         'name': 'blue_pos_ring',
-        'graph': make_ring_motif(COLOR_POS, BLUE, 3),
-        'value': 0.7, 
+        'graph': make_ring_motif(YELLOW, BLUE, 3),
+        'value': 1.0, 
     },
     'blue_pos_star': {
         'suffix': 'b', 
         'name': 'blue_pos_star',
-        'graph': make_star_motif(COLOR_POS, BLUE, 3),
-        'value': 2.8, 
+        'graph': make_star_motif(YELLOW, BLUE, 3),
+        'value': 3.0, 
     },
     'blue_neg_ring': {
         'suffix': 'b', 
         'name': 'blue_neg_ring',
-        'graph': make_ring_motif(COLOR_NEG, BLUE, 3),
-        'value': -0.7, 
+        'graph': make_ring_motif(YELLOW, CYAN, 3),
+        'value': -1.0, 
     },
     'blue_neg_star': {
         'suffix': 'b',
         'name': 'blue_neg_star',
-        'graph': make_star_motif(COLOR_NEG, BLUE, 3),
-        'value': -2.8
+        'graph': make_star_motif(YELLOW, CYAN, 3),
+        'value': -3.0
     },
     # the green motifs
     'green_pos_ring': {
         'suffix': 'g', 
         'name': 'green_pos_ring',
-        'graph': make_ring_motif(COLOR_POS, GREEN, 3),
+        'graph': make_ring_motif(YELLOW, GREEN, 3),
         'value': 1.0, 
     },
     'green_pos_star': {
         'suffix': 'g', 
         'name': 'green_pos_star',
-        'graph': make_star_motif(COLOR_POS, GREEN, 3),
-        'value': 2.0, 
+        'graph': make_star_motif(YELLOW, GREEN, 3),
+        'value': 3.0, 
     },
     'green_neg_ring': {
         'suffix': 'g', 
         'name': 'green_neg_ring',
-        'graph': make_ring_motif(COLOR_NEG, GREEN, 3),
+        'graph': make_ring_motif(YELLOW, TEAL, 3),
         'value': -1.0, 
     },
     'green_neg_star': {
         'suffix': 'g',
         'name': 'green_neg_star',
-        'graph': make_star_motif(COLOR_NEG, GREEN, 3),
-        'value': -2.0,
+        'graph': make_star_motif(YELLOW, TEAL, 3),
+        'value': -3.0,
     },
 }
 # :param IMAGE_WIDHT:
