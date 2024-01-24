@@ -13,6 +13,11 @@ import visual_graph_datasets.typing as tc
 from visual_graph_datasets.util import NULL_LOGGER
 
 
+# == IMPORTANCE PLOTTING PRIMITIVES ==
+# The following section contains functions which implement the actual plotting of one set of importance 
+# values into one plot. These following functions are essentially alternatives for the same operation - where 
+# the different functions just implement different styles for the visualization of the importances.
+
 def plot_node_importances_background(ax: plt.Axes,
                                      g: tc.GraphDict,
                                      node_positions: np.ndarray,
@@ -185,7 +190,24 @@ def plot_edge_importances_border(ax: plt.Axes,
             lw=thickness * max(weight, 0.1),
             alpha=value
         )
+        
+# These global dictionaries can be used to simplify the selection of the alternative plotting methods for 
+# high level functions. Instead of having to pass the actual callable function instance as a parameter 
+# it is possible to use the representative string and then obtain the callable from this dictionary.
+        
+PLOT_NODE_IMPORTANCES_OPTIONS: t.Dict[str, t.Callable] = {
+    'border':       plot_node_importances_border,
+    'background':   plot_node_importances_background,
+}
 
+PLOT_EDGE_IMPORTANCES_OPTIONS: t.Dict[str, t.Callable] = {
+    'border':       plot_edge_importances_border,
+    'background':   plot_edge_importances_background
+}
+
+
+# == ADVANCED IMPORTANCE PLOTTING ==
+# The next section defines more advanced functions for plotting importance/explanation related stuff.
 
 def create_importances_pdf(graph_list: t.List[tc.GraphDict],
                            image_path_list: t.List[str],

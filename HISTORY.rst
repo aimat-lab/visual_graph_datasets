@@ -362,3 +362,8 @@ Bugfixes
 
 - Fixed a minor issue where the datasets folder was not created during the ``config`` initialization which 
   has led to errors when trying to download a dataset.
+
+0.14.3 - 24.01.2024
+-------------------
+
+- Added back in the dictionaries defining the alternative versions for the node and edge importance plotting
