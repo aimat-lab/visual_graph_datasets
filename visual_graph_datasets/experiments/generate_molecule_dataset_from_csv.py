@@ -607,8 +607,8 @@ def experiment(e: Experiment):
             profiling['create_time'] += time_end_create - time_start_create
             profiling['graph_size'] += len(mol.GetAtoms())
 
-        except ProcessingError:
-            e.log(f' * error: {smiles}')
+        except (ProcessingError, ValueError) as exc:
+            e.log(f' * error: {smiles} ({exc})')
             continue
 
         # In regular intervals we will print how it's currently going aka how many elements have already
