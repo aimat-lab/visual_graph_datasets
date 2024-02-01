@@ -367,3 +367,11 @@ Bugfixes
 -------------------
 
 - Added back in the dictionaries defining the alternative versions for the node and edge importance plotting
+
+
+0.15.0 -
+-------------------
+
+- Added some more graph utility functions such as functions to extract sub graphs, add and remove nodes and 
+  to identify connected regions of a graph.
+  

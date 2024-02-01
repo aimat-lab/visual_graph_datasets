@@ -83,6 +83,20 @@ def test_molecule_processing_unprocess_works():
     # This is the most effective check we can perform, which effectively checks if the 
     # if the smiles representation stays the same through the process -> unprcess chain.
     assert smiles == unprocessed
+    
+    
+def test_molecule_processing_unprocess_charged_atoms_works():
+    """
+    30.01.24 - Extended the molecule unprocess method so that it now should be able to handle charged 
+    atoms as well
+    """
+    smiles = 'CC[N+](=O)[O-]'
+    
+    processing = MoleculeProcessing()
+    graph = processing.process(smiles)
+    unprocessed = processing.unprocess(graph, clear_aromaticity=False)
+
+    assert smiles == unprocessed
 
 
 def test_molecule_processing_symbol_encoder_works():

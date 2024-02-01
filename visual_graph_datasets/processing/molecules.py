@@ -292,6 +292,12 @@ class MoleculeProcessing(ProcessingBase):
             'description': 'One hot encoding of the atom type',
             'is_type': True,
             'encodes_symbol': True,
+        },
+        'charge': {
+            'callback': chem_prop('GetFormalCharge', list_identity),
+            'description': 'Encodes the charge of an atom (whether it is positively charged or negatively)',
+            'is_type': True,
+            'encodes_charge': True,
         }
     }
 
@@ -370,6 +376,13 @@ class MoleculeProcessing(ProcessingBase):
             lambda data: 'encodes_symbol' in data and data['encodes_symbol']
         ), dtype=int)
         
+        # 29.01.24
+        self.charge_indices: t.List[int] = np.array(self.get_attribute_indices(
+            self.node_attribute_map,
+            self.MOCK_ATOM,
+            lambda data: 'encodes_charge' in data and data['encodes_charge'],
+        ))
+        
         data = self.get_attribute_data(
             self.edge_attribute_map,
             lambda data: 'encodes_bond' in data and data['encodes_bond'],
@@ -402,6 +415,22 @@ class MoleculeProcessing(ProcessingBase):
                               element: t.Any,
                               condition: t.Callable
                               ) -> t.List[int]:
+        """
+        Given given an ``attribute_map`` which describes the attribute extraction from a molecule, an 
+        atom object ``element`` and a callable ``condition``, this method returns a list which contains 
+        the integer indices of a node attributes vector / elements of the node attribute map for which 
+        the given condition is true.
+        
+        If the given condition cannot be found at all, this method will return an empty list.
+        
+        :param attribute_map: The node attribute map which to search.
+        :param element: An Atom or Bond ojbect for which the search be executed. Usually MOCK_ATOM
+        :param condition: A callable function which receives the ``data`` dict element of the attribute map 
+            as a parameter and is supposed to return a boolean value that determines whether that dict 
+            fullfills the desired condition.
+        
+        :returns: A list of integer indices
+        """
         indices = []
         index = 0
         for name, data in attribute_map.items():
@@ -473,7 +502,6 @@ class MoleculeProcessing(ProcessingBase):
         
         :returns: The SMILES string corresponding to the graph dict
         """
-        # TODO: Add support for charged atoms.
         
         # For molecular graphs the domain representation is SMILES strings. For SMILES strings we need 
         # to rely on the conversion functionality implemented in RDKit and that in turn can perform the 
@@ -485,6 +513,11 @@ class MoleculeProcessing(ProcessingBase):
             node_attributes = graph['node_attributes'][node_index]
             symbol = self.symbol_encoder.decode(node_attributes[self.symbol_indices])
             atom = Chem.AtomFromSmarts(symbol)
+            
+            if self.charge_indices:
+                charge = int(node_attributes[self.charge_indices][0])
+                atom.SetFormalCharge(charge)
+            
             mol.AddAtom(atom)
         
         for edge_index, (i, j) in enumerate(graph['edge_indices']):

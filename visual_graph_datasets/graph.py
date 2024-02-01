@@ -80,22 +80,28 @@ def graph_remove_edge(graph: tv.GraphDict,
     
     :returns: the graph
     """
-    removed_indices = set()
-    edge_indices = []
-    for e, (i, j) in enumerate(graph['edge_indices']):
-        if node_index_1 == i and node_index_2 == j:
-            removed_indices.add(e)
-        elif not directed and node_index_1 == j and node_index_2 == i:
-            removed_indices.add(e)
-        else:
-            edge_indices.append((i, j))
-            
-    graph['edge_indices'] = np.array(edge_indices)
+    keep_indices: t.List[int] = []
     
-    edge_keys = [key for key in graph.keys() if key.startswith('edge') and key != 'edge_indices']
-    for key in edge_keys:
-        values = [value for _e, value in enumerate(graph[key].tolist()) if _e not in removed_indices]
-        graph[key] = np.array(values)
+    for e, (i, j) in enumerate(graph['edge_indices']):
+        
+        if (node_index_1 == i) and (node_index_2 == j):
+            continue
+        
+        if (not directed) and (node_index_1 == j) and (node_index_2 == i):
+            continue
+        
+        keep_indices.append(e)
+            
+    edge_indices = np.array([graph['edge_indices'][e] for e in keep_indices])
+    graph['edge_indices'] = edge_indices
+    
+    # Now we also want to 
+    for key in graph.keys():
+        
+        if key.startswith('edge') and key != 'edge_indices':
+            value = graph[key].tolist()
+            value = np.array([value[e] for e in keep_indices])
+            graph[key] = value
         
     return graph
 
@@ -164,13 +170,25 @@ def graph_attach_node(graph: tv.GraphDict,
     
     :returns: The modified graph dict which contains the additional edge
     """
-    node_index = np.max(graph['node_indices']) + 1
+    node_index = int(np.max(graph['node_indices']) + 1)
     
     graph['node_indices'] = np.concatenate((graph['node_indices'], np.array([node_index])), axis=0)
+    node_keys = [key for key in graph.keys() if key.startswith('node') and key not in ['node_indices', 'node_attributes']]
+    for key in node_keys:
+        graph[key] = np.concatenate((graph[key], np.zeros(shape=(1, *graph[key][0].shape))), axis=0)
+    
     graph['node_attributes'] = np.concatenate((graph['node_attributes'], np.array([node_attribute])), axis=0)
 
+    # ~ adding the edges
     edge_indices = graph['edge_indices'].tolist()
     edge_attributes = graph['edge_attributes'].tolist()
+
+    edge_keys = [key for key in graph.keys() if key.startswith('edge') and key not in ['edge_indices', 'edge_attributes']]
+    for key in edge_keys:
+        if directed:
+            graph[key] = np.concatenate((graph[key], np.zeros(shape=(1, *graph[key][0].shape))), axis=0)
+        if not directed:
+            graph[key] = np.concatenate((graph[key], np.zeros(shape=(2, *graph[key][0].shape))), axis=0)
 
     edge_indices.append([anchor_index, node_index])
     edge_attributes.append(edge_attribute)
@@ -178,8 +196,8 @@ def graph_attach_node(graph: tv.GraphDict,
         edge_indices.append([node_index, anchor_index])
         edge_attributes.append(edge_attribute)
     
-    graph['edge_indices'] = np.array(edge_indices)
-    graph['edge_attributes'] = np.array(edge_attributes)
+    graph['edge_indices'] = np.array(edge_indices, dtype=int)
+    graph['edge_attributes'] = np.array(edge_attributes, dtype=float)
     
     return graph
     
@@ -289,14 +307,17 @@ def extract_subgraph(graph: tv.GraphDict,
     # With this data structure we can now iterate through all the properties of the 
     # graph and essentially translat
     for key, value in graph.items():
-    
-        if key.startswith('node') and key != 'node_indices':
-            masked_value = np.array([value[i] for i, j in node_index_map.items()])
-            sub_graph[key] = masked_value
         
-        elif key.startswith('edge') and key != 'edge_indices':
-            masked_value = np.array([value[e] for e, q in edge_index_map.items()])
-            sub_graph[key] = masked_value
+        if isinstance(value, np.ndarray):
+            value = value.copy()
+    
+            if key.startswith('node') and key != 'node_indices':
+                masked_value = np.array([value[i] for i, j in node_index_map.items()])
+                sub_graph[key] = masked_value
+            
+            elif key.startswith('edge') and key != 'edge_indices':
+                masked_value = np.array([value[e] for e, q in edge_index_map.items()])
+                sub_graph[key] = masked_value
 
     return sub_graph, node_index_map, edge_index_map
 
@@ -415,7 +436,7 @@ def graph_is_connected(graph: tv.GraphDict) -> True:
         graph=graph,
         node_mask=mask,
     )
-    return set(region_mask) > 2
+    return np.all(region_mask == 0)
 
 
 def nx_from_graph(graph: tv.GraphDict) -> nx.Graph:
@@ -428,7 +449,7 @@ def nx_from_graph(graph: tv.GraphDict) -> nx.Graph:
 
     :param graph: The graph dict to be converted
 
-    :return: nx.Graph
+    :returns: nx.Graph
     """
     nx_graph = nx.Graph()
 
