@@ -1,4 +1,5 @@
 import os
+import pytest
 import tempfile
 import typing as t
 
@@ -13,6 +14,30 @@ from visual_graph_datasets.visualization.colors import visualize_color_graph, co
 from visual_graph_datasets.processing.colors import ColorProcessing
 
 from .util import ARTIFACTS_PATH, ASSETS_PATH
+
+
+@pytest.mark.parametrize('value', [
+    'RRR(G)(YGG)RR',
+    'RR(G)(YG)',
+])
+def test_color_processing_visualize_with_external_node_positions(value: str):
+    """
+    The visualize_as_figure method of the color processing instance should be able to visualize
+    a graph with external node positions that are not calculated by the processing instance itself.
+    """    
+    processing = ColorProcessing()
+    graph = processing.process(value)
+    # generating random 2D noe positions for each node in the graph:
+    node_positions = np.random.rand(len(graph['node_indices']), 2)
+    
+    fig, _ = processing.visualize_as_figure(
+        value=None,
+        graph=graph,
+        node_positions=node_positions
+    )
+    
+    image_path = os.path.join(ARTIFACTS_PATH, 'color_processing_visualize_with_external_node_positions.pdf')
+    fig.savefig(image_path)
 
 
 def test_bug_cogiles_encoding_edge_duplication():

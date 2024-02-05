@@ -3,6 +3,7 @@ Unittests for ``processing.molecules``
 """
 import os
 import sys
+import pytest
 import subprocess
 
 import click
@@ -10,6 +11,7 @@ import click.testing
 import numpy as np
 import matplotlib.pyplot as plt
 import visual_graph_datasets.typing as tc
+from visual_graph_datasets.graph import nx_from_graph
 from visual_graph_datasets.processing.base import create_processing_module
 from visual_graph_datasets.processing.base import EncoderBase
 from visual_graph_datasets.processing.molecules import MoleculeProcessing
@@ -29,6 +31,67 @@ from .util import ARTIFACTS_PATH
 
 
 SMILES = 'c1ccccc1'
+
+
+def test_nx_from_graph():
+    
+    smiles = 'CN1C=NC2=C1C(=O)N(C(=O)N2C)C'
+    
+    processing = MoleculeProcessing()
+    graph = processing.process(smiles)
+    graph_nx = nx_from_graph(graph)
+    
+    for e, (i, j) in enumerate(graph['edge_indices']):
+        assert np.isclose(graph['node_attributes'][i], graph_nx.nodes[i]['node_attributes']).all()
+        assert np.isclose(graph['edge_attributes'][e], graph_nx[i][j]['edge_attributes']).all()
+
+
+@pytest.mark.parametrize('smiles_1,smiles_2,match', [
+    ('CNC(C)=CCC', 'CNC=C', True),
+    ('CN1C=NC2=C1C(=O)N(C(=O)N2C)C', 'CN1C=CN=C1', True),
+    # Now since we care about the edges, this is not a match anymore because the wrong edge type
+    ('CN1C=NC2=C1C(=O)N(C(=O)N2C)C', 'CNCO', False),
+])
+def test_molecule_processing_contains_works_with_edges(smiles_1, smiles_2, match):
+    
+    processing = MoleculeProcessing()
+    
+    graph_1 = processing.process(smiles_1)
+    graph_2 = processing.process(smiles_2)
+    
+    result = processing.contains(
+        graph=graph_1,
+        subgraph=graph_2,
+        check_edges=True,
+    )
+    print(smiles_1, smiles_2, result)
+    assert result == match
+
+
+@pytest.mark.parametrize('smiles_1,smiles_2,match', [
+    # Here we just randomly check some cases with the caffeine molecule.
+    ('CN1C=NC2=C1C(=O)N(C(=O)N2C)C', 'CN1C=CN=C1', True),
+    ('CN1C=NC2=C1C(=O)N(C(=O)N2C)C', 'CNC=O', True),
+    # Technically this is the same as the previous one, but one edge is not correct, which should 
+    # not be a problem since we are not checking edges
+    ('CN1C=NC2=C1C(=O)N(C(=O)N2C)C', 'CNCO', True),
+    # This structure is for sure not contained in the main graph so the result should be False
+    ('CN1C=NC2=C1C(=O)N(C(=O)N2C)C', 'CNC(=O)NN', False),
+])
+def test_molecule_processing_contains_works(smiles_1, smiles_2, match):
+
+    processing = MoleculeProcessing()
+    
+    graph_1 = processing.process(smiles_1)
+    graph_2 = processing.process(smiles_2)
+    # I am not
+    result = processing.contains(
+        graph=graph_1, 
+        subgraph=graph_2,
+        check_edges=False,
+    )
+    print(smiles_1, smiles_2, result)
+    assert result == match
 
 
 def test_molecule_processing_extract_works():

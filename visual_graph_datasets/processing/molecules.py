@@ -7,6 +7,7 @@ import typing as t
 
 import numpy as np
 import numpy.linalg as la
+import networkx as nx
 import matplotlib.pyplot as plt
 import rdkit.Chem.Descriptors
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
@@ -18,11 +19,13 @@ from rdkit import RDLogger
 from rdkit.Chem import rdMolDescriptors
 from rdkit.Chem import rdPartialCharges
 from rdkit.Chem import EState
+from rdkit.Chem import AllChem
 rdDepictor.SetPreferCoordGen(True)
 RDLogger.DisableLog('rdApp.*')
 
 import visual_graph_datasets.typing as tc
 import visual_graph_datasets.typing as tv
+from visual_graph_datasets.graph import nx_from_graph
 from visual_graph_datasets.processing.base import ProcessingBase
 from visual_graph_datasets.processing.base import ProcessingError
 from visual_graph_datasets.processing.base import EncoderBase, OneHotEncoder
@@ -455,6 +458,28 @@ class MoleculeProcessing(ProcessingBase):
             edge_attributes_2[self.edge_type_indices],
         ).all()
     
+    def contains(self,
+                 graph: tv.GraphDict,
+                 subgraph: tv.GraphDict,
+                 check_edges: bool = False,
+                 ) -> bool:
+        
+        graph_nx: nx.Graph = nx_from_graph(graph)
+        subgraph_nx: nx.Graph = nx_from_graph(subgraph)
+    
+        if check_edges:
+            edge_match = lambda a, b: self.edge_match(a['edge_attributes'], b['edge_attributes'])
+        else:
+            edge_match = None
+    
+        matcher = nx.isomorphism.GraphMatcher(
+            graph_nx, subgraph_nx,
+            node_match=lambda a, b: self.node_match(a['node_attributes'], b['node_attributes']),
+            edge_match=edge_match,
+        )
+        
+        return matcher.subgraph_is_isomorphic()
+    
     def extract(self,
                 graph: tv.GraphDict,
                 mask: np.ndarray,
@@ -462,6 +487,7 @@ class MoleculeProcessing(ProcessingBase):
                 process_kwargs: dict = {},
                 unprocess_kwargs: dict = {},
                 ) -> t.Tuple[tv.DomainRepr, tv.GraphDict]:
+        
         return super().extract(
             graph=graph,
             mask=mask,
@@ -686,13 +712,21 @@ class MoleculeProcessing(ProcessingBase):
         # then calculate the 3D coordinates of each atom in space.
         if use_node_coordinates:
             try:
-                # https://sourceforge.net/p/rdkit/mailman/message/33386856/
-                try:
-                    rdkit.Chem.AllChem.EmbedMolecule(mol)
-                    rdkit.Chem.AllChem.MMFFOptimizeMolecule(mol)
-                except:
-                    rdkit.Chem.AllChem.EmbedMolecule(mol, useRandomCoords=True)
-                    rdkit.Chem.AllChem.UFFOptimizeMolecule(mol)
+                # # https://sourceforge.net/p/rdkit/mailman/message/33386856/
+                # try:
+                #     rdkit.Chem.AllChem.EmbedMolecule(mol)
+                #     rdkit.Chem.AllChem.MMFFOptimizeMolecule(mol)
+                # except:
+                #     rdkit.Chem.AllChem.EmbedMolecule(mol, useRandomCoords=True)
+                #     rdkit.Chem.AllChem.UFFOptimizeMolecule(mol)
+                    
+                # 05.02.2024
+                # Previously we tried to do the MMFF optimization here, but now we simply commit to the UFF 
+                # optimization which is a bit faster and should be sufficient for our purposes.
+                mol = Chem.AddHs(mol)
+                AllChem.EmbedMolecule(mol, AllChem.ETKDG())
+                AllChem.UFFOptimizeMolecule(mol)
+                mol = Chem.RemoveHs(mol)
 
                 conformer = mol.GetConformers()[0]
                 node_coordinates = np.array(conformer.GetPositions())

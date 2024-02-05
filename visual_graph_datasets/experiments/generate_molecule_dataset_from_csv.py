@@ -118,6 +118,14 @@ CSV_FILE_NAME: str = 'source/benzene_solubility.csv'
 #       associated with each dataset element. If this is not given, then integer indices will be randomly
 #       generated for each element in the final VGD
 INDEX_COLUMN_NAME: t.Optional[str] = None
+# :param INDICES_BLACKLIST_PATH:
+#       Optionally it is possible to define the path to a file which defines the blacklisted indices for the 
+#       dataset. This file should contain a list of integers, where each integer represents the index of an
+#       element which should be excluded from the final dataset. The file should be a normal TXT file where each 
+#       integer is on a new line.
+#       The indices listed in that file will be immediately skipped during processing without even loading the 
+#       the molecule.
+INDICES_BLACKLIST_PATH: t.Optional[str] = None
 # :param SMILES_COLUMN_NAME:
 #       This has to be the string name of the CSV column which contains the SMILES string representation of
 #       the molecule.
@@ -394,9 +402,26 @@ PLOT_COLOR = 'gray'
 __DEBUG__ = True
 
 
-@Experiment(base_path=folder_path(__file__),
-            namespace=file_namespace(__file__),
-            glob=globals())
+experiment = Experiment(
+    base_path=folder_path(__file__),
+    namespace=file_namespace(__file__),
+    glob=globals()
+)
+
+@experiment.hook('load_blacklist')
+def load_blacklist(e: Experiment) -> set[int]:
+    """
+    This hook loads the blacklist of indices from the given file path and returns it as a set of integers.
+    This set of integers defines all the indices of the target dataset that should be skipped during processing.
+    """
+    if e.INDICES_BLACKLIST_PATH is not None:
+        with open(e.INDICES_BLACKLIST_PATH, 'r') as file:
+            return {int(line) for line in file}
+    else:
+        return set()
+    
+
+@experiment
 def experiment(e: Experiment):
 
     # Here we provide the possibility for sub experiments to add more specific filters for their purposes
@@ -474,6 +499,15 @@ def experiment(e: Experiment):
     if e.SUBSET is not None and e.SUBSET < dataset_length:
         dataset_length = e.SUBSET
 
+    # -- Load the blacklist of indices --
+    
+    # :hook load_blacklist:
+    #       This hook is supposed to load the blacklist of indices from the given file path and return it as
+    #       a set of integers. This set of integers defines all the indices of the target dataset that should
+    #       be skipped during processing.
+    blacklist_indices: set[int] = e.apply_hook('load_blacklist')
+    e.log(f'loaded blacklist consisting of {len(blacklist_indices)} indices')
+
     # -- Processing the dataset into visual graph dataset --
     e.log('creating the dataset folder...')
     dataset_path = os.path.join(e.path, DATASET_NAME)
@@ -510,6 +544,14 @@ def experiment(e: Experiment):
     bytes_written: int = 0  # How many bytes were written since the last chunk was processed
     index: int = 0
     for d in raw_data_list:
+        
+        # 05.02.24
+        # If the index is part of the index blacklist, then we will skip the current element and continue
+        # with the next one.
+        if index in blacklist_indices:
+            e.log(f' * skipping {index} due to blacklist')
+            index += 1
+            continue
         
         smiles = d['smiles']
         # ~ Convert the smiles string into a molecule
