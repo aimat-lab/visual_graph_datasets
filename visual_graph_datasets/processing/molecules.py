@@ -37,7 +37,26 @@ from visual_graph_datasets.data import VisualGraphDatasetWriter
 
 def mol_from_smiles(smiles: str
                     ) -> Chem.Mol:
-    return Chem.MolFromSmiles(smiles)
+    """
+    Given the `smiles` string of a molecule, this function will convert that SMILES string into a valid
+    RDKit molecule object.
+    
+    :raises ValueError: If the SMILES string cannot be converted into a valid RDKit molecule object aka 
+        if the SMILES string is invalid and the conversion returns None.
+    
+    :param smiles: The SMILES string of the molecule to be converted.
+    
+    :returns: The RDKit molecule object corresponding to the given SMILES string
+    """
+    mol = Chem.MolFromSmiles(smiles)
+    # 06.02.24 
+    # This is important to check here because the conversion function sometimes fails silently by just returning 
+    # None instead of raising an exception. This is a problem because we need to know if the conversion was
+    # successful or not for downstream applications of this function.
+    if mol is None:
+        raise ValueError(f'Could not convert SMILES string "{smiles}" into a valid RDKit molecule object!')
+
+    return mol
 
 
 def list_identity(value: t.Any) -> t.List[t.Any]:

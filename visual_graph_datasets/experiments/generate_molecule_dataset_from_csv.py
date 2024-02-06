@@ -556,6 +556,8 @@ def experiment(e: Experiment):
         smiles = d['smiles']
         # ~ Convert the smiles string into a molecule
         try:
+            # Internally, this function will use the RDKIT SmilesToMol function for the conversion.
+            # This will raise an exception if the string could not be converted into a proper molecule
             mol = mol_from_smiles(smiles)
             d['mol'] = mol
         except Exception as exc:

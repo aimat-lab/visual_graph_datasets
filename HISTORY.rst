@@ -374,4 +374,11 @@ Bugfixes
 
 - Added some more graph utility functions such as functions to extract sub graphs, add and remove nodes and 
   to identify connected regions of a graph.
+- Added documentation for the ``ColorProcessing`` class
+- Changed the ``ColorProcessing.visualize_as_figure`` method to now also accept external graph dict parameter 
+  and external node_positions array.
+- Modified the ``generate_molecule_dataset_from_csv.py`` experiment so that it is now possible to optionally 
+  define a indices blacklist of elements that should be skipped during processing.
+- Moved the dependencies to the most recent version of RDKit. This seems to have fixed the issue of the molecule 
+  image generation occasionally crashing with a segmentation fault.
   
