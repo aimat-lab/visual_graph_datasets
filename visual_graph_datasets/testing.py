@@ -15,6 +15,35 @@ import visual_graph_datasets.typing as tv
 from visual_graph_datasets.util import TEMPLATE_ENV
 from visual_graph_datasets.config import Config
 from visual_graph_datasets.processing.base import ProcessingBase
+from visual_graph_datasets.generation.graph import GraphGenerator
+
+
+def generate_random_graph(num_nodes: int = 10,
+                          num_node_features: int = 3,
+                          num_edge_features: int = 1,
+                          ) -> tv.GraphDict:
+    """
+    This method will create a randomly generated graph dict representation of a graph with the 
+    given number ``num_nodes`` of nodes, the given number ``num_node_features`` of features per 
+    node and ``num_edge_features`` nodes per edge.
+    
+    This graph will have no cycles. The node and edge features will be randomly generated.
+    
+    :param num_nodes: The nodes that the graph should have
+    :param num_node_features: The number of features that the nodes of the graph should have
+    :param num_edge_features: The number of featuers that the edges of the graph should have 
+    
+    :returns: A graph dict representation of the randomly generated graph.
+    """
+    generator = GraphGenerator(
+        num_nodes=num_nodes,
+        num_additional_edges=0,
+        node_attributes_cb=lambda *args, **kwargs: np.random.random(size=(num_node_features, )),
+        edge_attributes_cb=lambda *args, **kwargs: np.random.random(size=(num_edge_features, ))
+    )
+    generator.reset()
+    graph = generator.generate()
+    return graph
 
 
 def clear_files(file_paths: t.List[str]):

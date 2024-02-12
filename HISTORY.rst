@@ -381,4 +381,7 @@ Bugfixes
   define a indices blacklist of elements that should be skipped during processing.
 - Moved the dependencies to the most recent version of RDKit. This seems to have fixed the issue of the molecule 
   image generation occasionally crashing with a segmentation fault.
+- Added the ``generic`` graph type. This is a graph type that can be used to represent any kind of graph 
+  that cannot be associated with any kind of specific domain. Added the ``GenericProcessing`` class which
+  can be used to process these generic graphs.
   

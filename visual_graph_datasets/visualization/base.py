@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 from imageio.v2 import imread
 
 import visual_graph_datasets.typing as tc
+import visual_graph_datasets.typing as tv
 
 
 def close_fig(figure):
@@ -127,7 +128,12 @@ def draw_image(ax: plt.Axes,
     Given the path ``image_path`` of a suitable image file and a matplotlib axes canvas ``ax``, this
     function will draw the image onto the canvas.
 
-
+    :param ax: The matplotlib Axes object on wich to draw the image
+    :param image_path: The absolute string path to the image that should be painted on the axes
+    :param remove_ticks: Whether to remove the ticks of the axes object after drawing the image.
+        If this is True, the extent of the image in pixels will be shown as ticks on the axes.
+    
+    :returns: None
     """
     image = imread(image_path)
     extent = [0, image.shape[0], 0, image.shape[1]]
@@ -136,3 +142,44 @@ def draw_image(ax: plt.Axes,
     if remove_ticks:
         ax.get_xaxis().set_ticks([])
         ax.get_yaxis().set_ticks([])
+
+
+def visualize_graph(ax: plt.Axes,
+                    graph: tv.GraphDict,
+                    node_positions: np.ndarray,
+                    face_color: str = 'gray',
+                    edge_color: str = 'black',
+                    line_width: float = 1.0,
+                    node_size: float = 100.0, 
+                    ) -> None:
+    """
+    
+    """
+    
+    # ~ drawing nodes
+    for i in graph['node_indices']:
+        x, y = node_positions[i]
+
+        ax.scatter(
+            x,
+            y,
+            color=face_color,
+            edgecolors=edge_color,
+            linewidths=line_width,
+            s=node_size,
+            zorder=2,
+        )
+
+    # ~ drawing edges
+    # The edges are simple: They are just black lines between the nodes.
+    for e, (i, j) in enumerate(graph['edge_indices']):
+        x_i, y_i = node_positions[i]
+        x_j, y_j = node_positions[j]
+
+        ax.plot(
+            (x_i, x_j),
+            (y_i, y_j),
+            color=edge_color,
+            lw=line_width,
+            zorder=1,
+        )
