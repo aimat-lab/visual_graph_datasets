@@ -1,0 +1,3 @@
+from visual_graph_datasets.processing.generic import GenericProcessing
+from visual_graph_datasets.processing.colors import ColorProcessing
+from visual_graph_datasets.processing.molecules import MoleculeProcessing

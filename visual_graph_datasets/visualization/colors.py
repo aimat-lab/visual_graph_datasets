@@ -1,3 +1,4 @@
+import random
 import typing as t
 
 import networkx as nx
@@ -8,22 +9,75 @@ import matplotlib.pyplot as plt
 import visual_graph_datasets.typing as tc
 
 
-def colors_layout(G, k: float = 1, scale: float = 10.0):
-    pos = None
+def colors_layout(G: nx.Graph, 
+                  k: float = 1, 
+                  scale: float = 10.0,
+                  dim: int = 2,
+                  node_positions: t.Optional[list] = None
+                  ) -> t.Dict[int, tuple]:
+    """
+    This function implements a networkx layout function, which can be used to create a ``pos`` dictionary 
+    for the given networkx graph ``G``. The layout is computed using the "spring" layout algorithm, which
+    is akin to a phyiscal simulation of the graph, where the nodes are repelling each other and the edges
+    are like springs.
+    
+    Additionally, for this specific layout it is possible to pass the ``node_positions`` argument, which is 
+    a list with the same length as the number of nodes in the graph. The elements of this list are either
+    None or a tuple of floats. For all the elements that are not None, those node positions will be fixed 
+    during the layouting - meaning that the nodes will have those exact coordinates at the end of the layout.
+    
+    :param G: The networkx graph for which the layout should be computed. If the graph is given in the 
+        graph dict representation it has to be converted to an nx Graph first using the ``nx_from_graph`` 
+        utility function.
+    :param k: The optimal distance between nodes (default: 1). This parameter can be changed to change the 
+        scale of the resulting graph layout. The larger this value, the more the graph will "spread out".
+    :param dim: The dimensionality of the layout to be created (default: 2).
+    :node_positions: Optional list with the same length as the number of nodes in the graph. The indices of 
+        this list are the node indices and the values can be None or a coordinate tuple. If the value is None 
+        then the coordinate of that node will be computed by the layout. Otherwise that coordinate will be
+        fixed.
+    
+    :returns: A dictioanry with the node indices as keys and the n-dimensional coordinates as values.
+    """
+    layout_kwargs = {
+        'k': k,
+        'scale': scale,
+        'dim': dim,
+        'center': np.zeros(shape=(dim, )),
+    }
+    
+    if node_positions is not None:
+
+        pos = {}
+        fixed = []
+        for index, coords in enumerate(node_positions):
+            if coords is not None:
+                pos[index] = coords
+                fixed.append(index)
+            else:
+                pos[index] = np.random.uniform(-scale, scale, size=(dim, ))
+        
+        layout_kwargs.update({
+            'pos': pos,
+            'fixed': fixed,
+        })
+    
+    # This function will then actually compute the layout using the "spring" layout algorithm. This algorithm 
+    # is akin to a phyiscal simulation of the graph, where the nodes are repelling each other and the edges
+    # are like springs. This will then result in a layout of the nodes in the chosen dimensional space.
     pos = nx.spring_layout(
         G,
-        pos=pos,
-        iterations=100,
-        threshold=1e-3,
-        k=k,
-        scale=scale,
-        center=[0, 0]
+        **layout_kwargs,
     )
-    pos = nx.kamada_kawai_layout(
-        G,
-        pos=pos,
-        scale=scale,
-    )
+    
+    # 03.03.24 - Remove the additional kamada kawai layout since I felt like it does not change anything of the 
+    # spring layout anyways.
+    # pos = nx.kamada_kawai_layout(
+    #     G,
+    #     pos=pos,
+    #     scale=scale,
+    # )
+    
     return pos
 
 

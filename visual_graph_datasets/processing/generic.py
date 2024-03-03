@@ -126,6 +126,13 @@ class GenericProcessing(ProcessingBase):
             graph=graph,
             node_positions=node_positions,
         )
+            
+        # The "node_positions" which are returned by the above function are values within the axes object
+        # coordinate system. Using the following piece of code we transform these into the actual pixel
+        # coordinates of the figure image.
+        node_positions = [[int(v) for v in ax.transData.transform((x, y))]
+                          for x, y in node_positions]
+        node_positions = np.array(node_positions)
         
         return fig, node_positions
     
@@ -171,6 +178,7 @@ class GenericProcessing(ProcessingBase):
                height: int = 1000,
                additional_graph_data: dict = {},
                additional_metadata: dict = {},
+               **kwargs,
                ) -> None:
         """
         This method will create the visualization of the given ``value`` string representation and use the 

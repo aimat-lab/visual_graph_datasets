@@ -725,6 +725,10 @@ class MoleculeProcessing(ProcessingBase):
             'edge_attributes':      np.array(edge_attributes, dtype=float),
             'graph_attributes':     np.array(graph_attributes, dtype=float),
             'graph_labels':         graph_labels,
+            # 14.02.24 - Initially I wanted to avoid addding the string graph representation to the graph 
+            # dictionary itself, because I kind of wanted all of the values to be numpy array. However, I 
+            # have now hit a problem where this is pretty much necessary.
+            'graph_repr':           value,
         }
 
         # Optionally, if the flag is set, this will apply a conformer on the molecule which will

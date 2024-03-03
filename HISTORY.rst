@@ -369,7 +369,7 @@ Bugfixes
 - Added back in the dictionaries defining the alternative versions for the node and edge importance plotting
 
 
-0.15.0 -
+0.15.0 - 03.03.2024
 -------------------
 
 - Added some more graph utility functions such as functions to extract sub graphs, add and remove nodes and 
@@ -384,4 +384,6 @@ Bugfixes
 - Added the ``generic`` graph type. This is a graph type that can be used to represent any kind of graph 
   that cannot be associated with any kind of specific domain. Added the ``GenericProcessing`` class which
   can be used to process these generic graphs.
+- Modifed the ``colors_layout`` function such that it is possible to pass a partially defined list of 
+  node_positions as an argument, such that the positions of some nodes can be fixed during the layouting.
   

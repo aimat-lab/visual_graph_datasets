@@ -243,6 +243,7 @@ class ColorProcessing(ProcessingBase):
                additional_graph_data: dict = {},
                width: int = 1000,
                height: int = 1000,
+               graph: t.Optional[tv.GraphDict] = None,
                writer: t.Optional[DatasetWriterBase] = None,
                *args,
                **kwargs,
@@ -271,15 +272,18 @@ class ColorProcessing(ProcessingBase):
         
         :returns: None
         """
-        g = self.process(value)
-        g.update(additional_graph_data)
+        if graph is None:
+            graph = self.process(value)
+        
+        graph.update(additional_graph_data)
         fig, node_positions = self.visualize_as_figure(
             value=value,
             width=width,
             height=height,
+            graph=graph,
             **kwargs,
         )
-        g['node_positions'] = node_positions
+        graph['node_positions'] = node_positions
 
         metadata = {
             **additional_metadata,
@@ -289,7 +293,7 @@ class ColorProcessing(ProcessingBase):
             'target': graph_labels,
             'image_width': width,
             'image_height': height,
-            'graph': g,
+            'graph': graph,
         }
 
         # Technically, NOT using a writer is deprecated, but we still support it for backwards compatibility.

@@ -5,15 +5,76 @@ import typing as t
 
 import numpy as np
 import matplotlib.pyplot as plt
+import networkx as nx
 
 from visual_graph_datasets.typing import assert_graph_dict
 from visual_graph_datasets.data import VisualGraphDatasetReader
 from visual_graph_datasets.graph import graph_add_edge
+from visual_graph_datasets.graph import nx_from_graph
 from visual_graph_datasets.visualization.base import layout_node_positions
 from visual_graph_datasets.visualization.colors import visualize_color_graph, colors_layout
 from visual_graph_datasets.processing.colors import ColorProcessing
 
 from .util import ARTIFACTS_PATH, ASSETS_PATH
+
+
+def test_layout_with_partial_node_positions():
+    
+    graph = {
+        'node_indices': [0, 1, 2, 3, 4, 5],
+        'node_attributes': [
+            [1, 0, 0],
+            [1, 0, 0],
+            [1, 0, 0],
+            [1, 1, 0],
+            [1, 1, 0],
+            [1, 1, 0],
+        ],
+        'edge_indices': [
+            [0, 1], [1, 0],
+            [1, 2], [2, 1],
+            [0, 2], [2, 0],
+            [2, 3], [3, 2],
+            [3, 4], [4, 3],
+            [3, 5], [5, 3],
+        ],
+        'edge_attributes': [
+            [1], [1],
+            [1], [1],
+            [1], [1],
+            [1], [1],
+            [1], [1],
+            [1], [1],
+        ],
+        'node_positions': [
+            [0, 0],
+            [0, 2],
+            [6, 1],
+            None,
+            None,
+            None,
+        ]
+    }
+    
+    g = nx_from_graph(graph)
+    node_positions = colors_layout(g, node_positions=graph['node_positions'])
+    node_positions = np.array([node_positions[i] for i in graph['node_indices']])
+    assert len(node_positions) == len(graph['node_indices'])
+    assert np.allclose(node_positions[0], [0, 0])
+    assert np.allclose(node_positions[1], [0, 2])
+    assert np.allclose(node_positions[2], [6, 1])
+    
+    print(node_positions)
+    processing = ColorProcessing()
+    fig, _ = processing.visualize_as_figure(
+        value=None,
+        graph=graph,
+        node_positions=node_positions,
+    )
+    
+    image_path = os.path.join(ARTIFACTS_PATH, 'color_layout_partial_positions.pdf')
+    fig.savefig(image_path)
+    
 
 
 @pytest.mark.parametrize('value', [

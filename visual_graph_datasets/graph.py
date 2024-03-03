@@ -418,7 +418,7 @@ def graph_find_connected_regions(graph: tv.GraphDict,
     return region_mask
 
 
-def graph_is_connected(graph: tv.GraphDict) -> True:
+def graph_is_connected(graph: tv.GraphDict) -> bool:
     """
     Given a ``graph`` dict representation, this method returns the boolean value of whether or not 
     that graph is connected or not. Returns False if the graph consists of more than 1 disconnected 
@@ -437,6 +437,27 @@ def graph_is_connected(graph: tv.GraphDict) -> True:
         node_mask=mask,
     )
     return np.all(region_mask == 0)
+
+
+def graph_has_isolated_node(graph: tv.GraphDict) -> bool:
+    """
+    Checks whether or not the given ``graph`` dict representation contains at least one isolated node, which is 
+    a node that is not part of any edge.
+    
+    :param graph: The graph to be checked
+    
+    :returns: boolean value of whether or not the graph contains an isolated node
+    """
+    # We simply go through all the edges and every node that is part of at least one edge we will consider as 
+    # a non-isolated node aka connected node.
+    connected_nodes = set()
+    for i, j in graph['edge_indices']:
+        connected_nodes.add(i)
+        connected_nodes.add(j)
+    
+    # And if this set of connected nodes is not as long as all the node indices then we know that there must be 
+    # at least one isolated node.
+    return len(connected_nodes) < len(graph['node_indices'])
 
 
 def nx_from_graph(graph: tv.GraphDict) -> nx.Graph:
