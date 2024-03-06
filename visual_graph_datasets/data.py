@@ -7,6 +7,7 @@ import time
 import yaml
 import json
 import logging
+import shutil
 import typing as t
 
 import orjson
@@ -667,10 +668,21 @@ class VisualGraphDatasetWriter(DatasetWriterBase):
                 file.write(content)
 
         if figure is not None:
+            
             image_path = os.path.join(self.current_path, f'{file_name}.png')
             self.most_recent['image_path'] = image_path
-            figure.savefig(image_path)
-            plt.close(figure)
+            
+            # In case the figure argument is a string we are goung to assume that it is the absolute path 
+            # to an already existing graph visualization image and in that case we only need to copy 
+            # that file!
+            if isinstance(figure, str):
+                shutil.copy(figure, image_path)
+                
+            # Otherwise the default case is that the graph visualization will be given as a plt figure object 
+            # which which case we need to save that to the path.
+            elif isinstance(figure, plt.Figure):
+                figure.savefig(image_path)
+                plt.close(figure)
 
         # Calling this method is important to update the writers chunking state and should always be called
         # at the end of the write method!

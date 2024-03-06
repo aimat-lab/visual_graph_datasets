@@ -100,6 +100,7 @@ class Config(metaclass=Singleton):
     def load(self, path: str = CONFIG_PATH):
         self.path = path
         self.data = load_config(path=path)
+        return self
 
     def get_folder_path(self) -> t.Optional[str]:
         return os.path.dirname(self.path)

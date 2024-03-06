@@ -290,7 +290,66 @@ def apply_graph_callbacks(mol):
 
 class MoleculeProcessing(ProcessingBase):
     """
-    This class can be used as a
+    This class is used for the processing of the special "Molecule Graph" graph type. A molecule graph consists of 
+    mutliple atoms (nodes) which are connected by different types of bonds (edges). The class provides methods to process 
+    the domain string representation of molecule graphs (SMILES strings) into the graph dict representation. The class also 
+    provides methods to create a new visual graph dataset element based on the given molecule graph.
+    
+    **Domain Representation**
+    
+    The domain specific representation of a molecule graph is called SMILES. It is a string representation of the
+    molecular graph. SMILES is an established format for representing molecules and is used by many cheminformatics
+    software packages. Characters in this string represent the different atom types while special characters such as 
+    brackets and numbers represent the connections between the atoms. The SMILES string can be processed into a graph
+    dict representation by using the ``process`` method.
+    
+    Examples:
+    
+    The string "C1=CC=C(N)C=C1" is a benzene ring to which a amine group is attached.
+    
+    **Graph Dict Representation**
+    
+    A domain-specific SMILES representation of a color graph can be processed into a graph dict representation 
+    by using the ``process`` method. The graph dict representation is a dictionary which contains the full graph 
+    data of the molecular graph.
+    
+    .. code-block:: python
+    
+        smiles = "C1=CC=C(N)C=C1"
+        processing = MoleculeProcessing()
+        graph = processing.process(smiles)
+        print(graph)
+    
+    **Visualization**
+    
+    A molecular graph can be visualized using the ``visualize`` method (numpy array) or alternatively the 
+    ``visualize_as_figure`` method (matplotlib figure). The visualization will result in an image with the given 
+    width and height in pixels.
+    
+    .. code-block:: python
+    
+        smiles = "C1=CC=C(N)C=C1"
+        processing = MoleculeProcessing()
+        fig = processing.visualize_as_figure(smiles, width=1000, height=1000)
+        plt.show()
+        
+    All the visualizations are created with the RDKit cheminformatics library - specificall the RDKit MolDraw2DSVG 
+    functionality. The visualizations are created as SVG strings which are then converted into a numpy array or a
+    matplotlib figure.
+    
+    **Customization**
+    
+    Generally, the most basic information that is encoded in a molecular graph is a one-hot encoding of the atom type 
+    as part of the node attributes and an encoding of the bond type as part of the bond attributes. However, there are 
+    many more possible bits of information that can be included for both the nodes and the edges. One might want to 
+    customize the exact information that is encoded for a specific application. This can be easily done by subclassing
+    the MoleculeProcessing class and overwriting the ``node_attribute_map`` and ``edge_attribute_map`` class variables.
+    
+    These class variables are dictionaries which map the names of the node and edge attributes to a dictionary which
+    contains the callback function which is used to extract the attribute value from the molecule graph. The callback
+    function is a function which takes the molecule graph and the atom or bond object as input and returns the value
+    of the attribute. The callback function can be any function which returns a list of floats. The list of floats
+    will be the attribute vector of the node or edge in the graph dict representation.    
     """
 
     # This is the descriptive string which will be used for the --help option if the command line interface 

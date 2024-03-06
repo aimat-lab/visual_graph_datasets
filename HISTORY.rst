@@ -368,7 +368,6 @@ Bugfixes
 
 - Added back in the dictionaries defining the alternative versions for the node and edge importance plotting
 
-
 0.15.0 - 03.03.2024
 -------------------
 
@@ -387,3 +386,9 @@ Bugfixes
 - Modifed the ``colors_layout`` function such that it is possible to pass a partially defined list of 
   node_positions as an argument, such that the positions of some nodes can be fixed during the layouting.
   
+0.15.1 - 06.03.2024
+-------------------
+
+- The "load" method of the Config instance now returns the itself, which is just a small quality of life improvement
+  for the scripts that will use have to use the config instance.
+- Added some additional documentation for the Processing classes
