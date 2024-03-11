@@ -6,11 +6,17 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+import matplotlib.cm as cm
 from matplotlib.backends.backend_pdf import PdfPages
 from imageio.v2 import imread
 
 import visual_graph_datasets.typing as tc
 from visual_graph_datasets.util import NULL_LOGGER
+from visual_graph_datasets.visualization.base import draw_image
+
+from graph_attention_student.utils import array_normalize
+from graph_attention_student.utils import binary_threshold
+from graph_attention_student.utils import fidelity_from_deviation
 
 
 # == IMPORTANCE PLOTTING PRIMITIVES ==
@@ -372,6 +378,161 @@ def create_importances_pdf(graph_list: t.List[tc.GraphDict],
                         v_min=0,
                     )
 
+            if index % log_step == 0:
+                logger.info(f' * ({index} / {len(graph_list)}) visualizations created')
+
+            pdf.savefig(fig)
+            plt.close(fig)
+
+
+def create_combined_importances_pdf(graph_list: t.List[tc.GraphDict],
+                                    image_path_list: t.List[str],
+                                    node_positions_list: t.List[np.ndarray],
+                                    graph_fidelity_list: t.List[np.array],
+                                    node_importances_list: t.List[np.ndarray],
+                                    edge_importances_list: t.List[np.ndarray],
+                                    output_path: str,
+                                    channel_colors_map: t.Optional[t.List[str]],
+                                    label_list: t.Optional[t.List[str]] = None,
+                                    importance_threshold: t.Optional[float] = None,
+                                    channel_limit_map: t.Optional[dict[int, float]] = None,
+                                    base_fig_size: float = 8,
+                                    show_ticks: bool = False,
+                                    logger: logging.Logger = NULL_LOGGER,
+                                    log_step: int = 100,
+                                    ):
+    """
+    This function will create a PDF file which contains the visualizations of multiple graph elements and their 
+    corresponding explanation masks. This specific function will visualize the explanations from all explanation
+    channels on top of one single graph visualization. The different explanation channels will thereby be encoded 
+    by different colormaps. The importance value will be encoded as the alpha value of the color while the channel 
+    fidelity will be encoded in the color map gradient.
+    
+    The PDF will have one page for each element to be visualized. The visualizations will be ordered in the same
+    order as the given graph_list.
+    
+    :param graph_list: A list containing the graph dict representations of all the graphs to be visualized
+    :param image_path_list: A list containing the absolute string paths to the visualization images of the
+        graphs. Must have the same order as graph_list.
+    :param node_positions_list: A list containing the node position arrays for the graphs to be visualized.
+        These arrays should determine the 2D pixel coordinates for each node of the graphs. Must have the
+        same order as graph_list.
+    :param graph_fidelity_list: A list of numpy arrays that contain the fidelity values for each channel of the
+        model for each graph. The fidelity value is a float value that describes how much the explanation channel
+        actually contributes to the prediction outcome. The list must have the same order as the given graph_list.
+    :param node_importances_list: A list of numpy arrays that contain the node importance values for each node and
+        each channel of the model. The list must have the same order as the given graph_list.
+    :param edge_importances_list: A list of numpy arrays that contain the edge importance values for each edge and
+        each channel of the model. The list must have the same order as the given graph_list.
+    :param output_path: The absolute string path to the output PDF file.
+    :param channel_colors_map: A dictionary that maps the channel index to a valid matplotlib colormap. The colormap
+        will be used to encode the channel fidelity values. The keys of this dict are the channel indices and the
+        values are the colormaps. The number of channels must match the number of channels in the given node and edge
+        importances arrays.
+    :param label_list: A list of string labels that will be attached to the visualizations in the format of a title
+        for the page.
+    :param importance_threshold: A float value that will be used to threshold the importance values. If a threshold
+        is given, all importance values that are below this threshold will be set to zero.
+    :param channel_limit_map: A dictionary that maps the channel index to a float value. This float value will be used
+        as the upper limit for the color map normalization. If no channel limit map is given, the limits will be
+        defined as the 90th percentiles of the fidelity values across all the given graphs.
+    :param base_fig_size: The size of the figures. Modification of this value will influence the file size of the PDF
+        and the ratio of the size of the text and image elements within each page of the PDF.
+    :param show_ticks: A boolean value that determines if the ticks of the axis should be shown or not.
+    :param logger: A logger instance that will be used to log the progress of the function.
+    :param log_step: An integer value that determines how often the function should log the progress.
+    
+    :returns: None
+    """
+    num_channels = len(channel_colors_map)
+    
+    # If no channel limit map is explicitly given we are going to define the limits ourselves as the 90th percentiles
+    # of the fidelity values across all the given graphs.
+    if not channel_limit_map:
+        
+        channel_limit_map = {}
+        for channel_index in range(num_channels):
+            value = np.percentile([fid[channel_index] for fid in graph_fidelity_list], 90)
+            channel_limit_map[channel_index] = value
+    
+    with PdfPages(output_path) as pdf:
+        
+        for index, graph in enumerate(graph_list):
+            node_positions = node_positions_list[index]
+
+            # For this specific implementation of the visualization we only create one single figure for each page of 
+            # the PDF. This figure shall then contain all the individual explanation channels at once, but just encoded 
+            # with different color schemes.
+            fig, rows = plt.subplots(
+                ncols=1,
+                nrows=1,
+                figsize=(base_fig_size, base_fig_size),
+                squeeze=False,
+            )
+            ax = rows[0][0]
+            
+            # This function will correctly draw the graph image from the file system to the axis in such a way that 
+            # the node positions array matches the pixel coordinates in the axis.
+            # Here we only need to draw the visualization once and can then draw all the explanations on top of 
+            # that same graph visualization.
+            image_path = image_path_list[index]
+            draw_image(ax, image_path, remove_ticks=not show_ticks)
+            
+            # node_importance: (num_nodes, num_channels)
+            node_importances: np.ndarray = array_normalize(node_importances_list[index])
+            # edge_importance: (num_nodes, num_channels)
+            edge_importances: np.ndarray = array_normalize(edge_importances_list[index])
+            
+            if importance_threshold is not None:
+                node_importances = binary_threshold(node_importances, importance_threshold)
+                edge_importances = binary_threshold(edge_importances, importance_threshold)
+            
+            # This is a numpy array that contains one float value for every channel of the model, where the 
+            # value describes the fidelity value of that channel (== the value of how much that particular explanation 
+            # channel actually contributes to the prediction outcome).
+            # graph_fidelity: (num_channels, )
+            graph_fidelity: np.ndarray = graph_fidelity_list[index]
+            
+            # Then we draw the same importance for every 
+            for channel_index, cmap in channel_colors_map.items():
+                
+                fidelity_channel: float = graph_fidelity[channel_index]
+                
+                norm = mcolors.Normalize(vmin=0, vmax=channel_limit_map[channel_index])
+                color = cmap(norm(fidelity_channel))
+                
+                scalar_mappable = cm.ScalarMappable(cmap=cmap, norm=norm)
+                fig.colorbar(
+                    scalar_mappable, 
+                    ax=ax, 
+                    orientation='vertical', 
+                    pad=0.05, 
+                    shrink=0.6,
+                )
+                
+                plot_node_importances_background(
+                    ax=ax,
+                    g=graph,
+                    node_positions=node_positions,
+                    node_importances=node_importances[:, channel_index],
+                    color=color,
+                    radius=50,
+                )
+                plot_edge_importances_background(
+                    ax=ax,
+                    g=graph,
+                    node_positions=node_positions,
+                    edge_importances=edge_importances[:, channel_index],
+                    color=color,
+                    thickness=10,
+                )
+            
+            # There is also the option to attach a string label to every visualization in the format of 
+            # a label / title of the page.
+            if label_list:
+                label = label_list[index]
+                fig.suptitle(label)
+                
             if index % log_step == 0:
                 logger.info(f' * ({index} / {len(graph_list)}) visualizations created')
 

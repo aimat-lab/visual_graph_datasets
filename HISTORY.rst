@@ -392,3 +392,10 @@ Bugfixes
 - The "load" method of the Config instance now returns the itself, which is just a small quality of life improvement
   for the scripts that will use have to use the config instance.
 - Added some additional documentation for the Processing classes
+
+0.15.2 - 06.03.2024
+-------------------
+
+- Added the function ``create_combined_importances_pdf" to generate a visualization PDF that visualizes the explanations 
+  not as separate figures, but all the explanation channels into the same figure, encoding the different channels as different 
+  colors.
