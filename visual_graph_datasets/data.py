@@ -683,6 +683,9 @@ class VisualGraphDatasetWriter(DatasetWriterBase):
             elif isinstance(figure, plt.Figure):
                 figure.savefig(image_path)
                 plt.close(figure)
+                
+            else:
+                raise TypeError(f'cannot save figure of type: {type(figure)}!')
 
         # Calling this method is important to update the writers chunking state and should always be called
         # at the end of the write method!

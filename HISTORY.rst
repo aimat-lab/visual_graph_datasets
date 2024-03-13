@@ -399,3 +399,8 @@ Bugfixes
 - Added the function ``create_combined_importances_pdf" to generate a visualization PDF that visualizes the explanations 
   not as separate figures, but all the explanation channels into the same figure, encoding the different channels as different 
   colors.
+
+0.15.3 - 13.03.2024
+-------------------
+
+- Changed the version requirement to be compatible with newer python versions
