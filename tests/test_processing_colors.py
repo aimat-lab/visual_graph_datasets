@@ -1,4 +1,5 @@
 import os
+import json
 import pytest
 import tempfile
 import typing as t
@@ -16,6 +17,31 @@ from visual_graph_datasets.visualization.colors import visualize_color_graph, co
 from visual_graph_datasets.processing.colors import ColorProcessing
 
 from .util import ARTIFACTS_PATH, ASSETS_PATH
+
+
+def test_layout_with_partial_node_positions_real_graph():
+    string = '{"index": 1, "name": "test", "value": 0, "target": [-0.026701535786801955], "graph": {"node_indices": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22], "node_positions": [null, null, null, [68, 0], [26, 0], null, null, null, null, null, null, null, null, [-131, 229], null, [115, -18], null, null, [60, 86], [102, 178], null, null, null], "node_attributes": [[0.0, 0.0, 1.0], [0.800000011920929, 0.800000011920929, 0.800000011920929], [0.0, 1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.800000011920929, 0.800000011920929, 0.800000011920929], [0.0, 0.0, 1.0], [0.0, 1.0, 1.0], [0.800000011920929, 0.800000011920929, 0.800000011920929], [0.0, 0.0, 1.0], [1.0, 0.0, 0.0], [1.0, 1.0, 0.0], [0.800000011920929, 0.800000011920929, 0.800000011920929], [0.0, 0.0, 1.0], [1.0, 0.0, 1.0], [0.0, 1.0, 0.0], [1.0, 0.0, 1.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0], [0.0, 1.0, 0.0], [0.0, 1.0, 0.0]], "edge_indices": [[3, 19], [3, 15], [19, 3], [19, 15], [15, 19], [15, 3], [4, 18], [4, 13], [18, 4], [18, 13], [13, 18], [13, 4], [17, 13], [13, 17], [16, 19], [19, 16], [11, 13], [13, 11], [2, 19], [19, 2], [1, 11], [11, 1], [6, 16], [16, 6], [14, 2], [2, 14], [21, 18], [18, 21], [20, 17], [17, 20], [0, 21], [21, 0], [12, 3], [3, 12], [10, 15], [15, 10], [8, 19], [19, 8], [5, 1], [1, 5], [7, 2], [2, 7], [22, 15], [15, 22], [9, 18], [18, 9], [2, 13], [13, 2], [12, 16], [16, 12], [9, 22], [22, 9], [17, 10], [10, 17], [14, 8], [8, 14], [22, 19], [19, 22], [4, 17], [17, 4], [10, 20], [20, 10], [14, 5], [5, 14]], "edge_attributes": [[1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0]], "seed_graph_indices": [-1, -1, -1, 0, 1, -1, -1, -1, -1, -1, -1, -1, -1, 1, -1, 0, -1, -1, 1, 0, -1, -1, -1], "node_importances_1": [[0.0], [0.0], [0.0], [1.0], [1.0], [0.0], [0.0], [0.0], [0.0], [0.0], [0.0], [0.0], [0.0], [1.0], [0.0], [1.0], [0.0], [0.0], [1.0], [1.0], [0.0], [0.0], [0.0]], "node_importances_2": [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [1.0, 1.0], [1.0, 1.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [1.0, 1.0], [0.0, 0.0], [1.0, 1.0], [0.0, 0.0], [0.0, 0.0], [1.0, 1.0], [1.0, 1.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0]], "graph_labels": [-0.026701535786801955], "graph_labels_raw": [0]}}'
+    metadata = json.loads(string)
+    graph = metadata['graph']
+    for key, value in graph.items():
+        if key != 'node_positions':
+            graph[key] = np.array(value)
+    node_positions = graph['node_positions']
+
+    g = nx_from_graph(graph)
+    node_positions = colors_layout(g, node_positions=graph['node_positions'], k=50)
+    node_positions = np.array([node_positions[i].tolist() for i in graph['node_indices']])
+    graph['node_positions'] = node_positions
+
+    processing = ColorProcessing()
+    fig, _ = processing.visualize_as_figure(
+        value=None,
+        graph=graph,
+        node_positions=node_positions,
+    )
+    
+    image_path = os.path.join(ARTIFACTS_PATH, 'color_layout_partial_positions_real_graph.pdf')
+    fig.savefig(image_path)
 
 
 def test_layout_with_partial_node_positions():
@@ -47,10 +73,10 @@ def test_layout_with_partial_node_positions():
             [1], [1],
         ],
         'node_positions': [
-            [0, 0],
+            None,
             [0, 2],
             [6, 1],
-            None,
+            [0, 0],
             None,
             None,
         ]
@@ -60,7 +86,7 @@ def test_layout_with_partial_node_positions():
     node_positions = colors_layout(g, node_positions=graph['node_positions'])
     node_positions = np.array([node_positions[i] for i in graph['node_indices']])
     assert len(node_positions) == len(graph['node_indices'])
-    assert np.allclose(node_positions[0], [0, 0])
+    assert np.allclose(node_positions[3], [0, 0])
     assert np.allclose(node_positions[1], [0, 2])
     assert np.allclose(node_positions[2], [6, 1])
     

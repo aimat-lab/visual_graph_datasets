@@ -12,11 +12,9 @@ from imageio.v2 import imread
 
 import visual_graph_datasets.typing as tc
 from visual_graph_datasets.util import NULL_LOGGER
+from visual_graph_datasets.util import array_normalize
+from visual_graph_datasets.util import binary_threshold
 from visual_graph_datasets.visualization.base import draw_image
-
-from graph_attention_student.utils import array_normalize
-from graph_attention_student.utils import binary_threshold
-from graph_attention_student.utils import fidelity_from_deviation
 
 
 # == IMPORTANCE PLOTTING PRIMITIVES ==

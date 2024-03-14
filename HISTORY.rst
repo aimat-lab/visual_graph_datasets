@@ -404,3 +404,8 @@ Bugfixes
 -------------------
 
 - Changed the version requirement to be compatible with newer python versions
+
+0.15.4 - 14.03.2024
+-------------------
+
+- Fixed the dependency error where utils imported from ``graph_attention_student`` have caused a circular import error

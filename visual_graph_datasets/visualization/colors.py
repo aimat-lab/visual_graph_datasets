@@ -13,6 +13,7 @@ def colors_layout(G: nx.Graph,
                   k: float = 1, 
                   scale: float = 10.0,
                   dim: int = 2,
+                  iterations: int = 200,
                   node_positions: t.Optional[list] = None
                   ) -> t.Dict[int, tuple]:
     """
@@ -40,10 +41,12 @@ def colors_layout(G: nx.Graph,
     :returns: A dictioanry with the node indices as keys and the n-dimensional coordinates as values.
     """
     layout_kwargs = {
-        'k': k,
-        'scale': scale,
-        'dim': dim,
-        'center': np.zeros(shape=(dim, )),
+        'k':            k,
+        'scale':        scale,
+        'dim':          dim,
+        'center':       np.zeros(shape=(dim, )),
+        'fixed':        None,
+        'iterations':   iterations,
     }
     
     if node_positions is not None:
@@ -57,9 +60,10 @@ def colors_layout(G: nx.Graph,
             else:
                 pos[index] = np.random.uniform(-scale, scale, size=(dim, ))
         
+        # fixed = np.array(fixed, dtype=int)
         layout_kwargs.update({
-            'pos': pos,
-            'fixed': fixed,
+            'pos':      pos,
+            'fixed':    fixed,
         })
     
     # This function will then actually compute the layout using the "spring" layout algorithm. This algorithm 

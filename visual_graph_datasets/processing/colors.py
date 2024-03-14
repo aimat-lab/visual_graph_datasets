@@ -106,7 +106,7 @@ class ColorProcessing(ProcessingBase):
         graph = graph_from_cogiles(value)
         graph = {
             **graph,
-            **additional_graph_data
+            **additional_graph_data,
         }
         return graph
 

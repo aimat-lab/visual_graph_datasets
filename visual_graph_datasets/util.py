@@ -11,6 +11,7 @@ import typing as t
 import click
 import jinja2 as j2
 import numpy as np
+import matplotlib.colors as mcolors
 
 from visual_graph_datasets.config import HOME_PATH, FOLDER_PATH, CONFIG_PATH
 from visual_graph_datasets.config import Config
@@ -148,6 +149,38 @@ def merge_nested_dicts(original: dict, update: dict) -> dict:
             original[key] = value
 
     return original
+
+
+def array_normalize(array: np.ndarray
+                    ) -> np.ndarray:
+    """
+    Normalizes all the values of the given ``array`` into a range between 0 and 1 based on the values 
+    maximum and minimum values of the array.
+    
+    :param array: The array to be normalized
+    
+    :returns: The normalized array 
+    """
+    norm = mcolors.Normalize(vmin=np.min(array), vmax=np.max(array))
+    return np.vectorize(norm)(array)
+
+
+def binary_threshold(array: np.ndarray,
+                     threshold: float,
+                     ) -> np.ndarray:
+    """
+    Applies a binary threshold to the given ``array``. All values that are greater than the given 
+    ``threshold`` will be set to 1, all other values will be set to 0.
+    
+    :param array: The array to be thresholded
+    :param threshold: The threshold value
+    
+    :returns: The thresholded binary array
+    """
+    binary = np.zeros_like(array)
+    binary[array > threshold] = 1
+    return binary
+
 
 
 def edge_importances_from_node_importances(edge_indices: np.ndarray,
