@@ -476,6 +476,7 @@ def nx_from_graph(graph: tv.GraphDict) -> nx.Graph:
 
     node_keys = [key for key in graph.keys() if key.startswith('node')]
     edge_keys = [key for key in graph.keys() if key.startswith('edge')]
+    print(node_keys, edge_keys)
 
     for i in graph['node_indices']:
         nx_graph.add_node(i, **{key: graph[key][i] for key in node_keys})

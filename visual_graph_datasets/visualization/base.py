@@ -25,7 +25,11 @@ def close_fig(figure):
 
 def create_frameless_figure(width: int = 100,
                             height: int = 100,
-                            ratio: int = 2) -> t.Tuple[plt.Figure, plt.Axes]:
+                            ratio: int = 2,
+                            dim: int = 2,
+                            show_spines: bool = False,
+                            show_axis: bool = False,
+                            ) -> t.Tuple[plt.Figure, plt.Axes]:
     """
     Returns a tuple of a matplotlib Figure and Axes object, where the axes object is a complete blank slate
     that can act as the foundation of a matplotlib-based visualization of a graph.
@@ -42,23 +46,31 @@ def create_frameless_figure(width: int = 100,
         size of the image.
     :return:
     """
-    fig, ax = plt.subplots(
-        nrows=1,
-        ncols=1,
-        figsize=(width / (100 * ratio), height / (100 * ratio)),
-        frameon=False,
-    )
+    
+    fig = plt.figure(figsize=(width / (100 * ratio), height / (100 * ratio)))
     fig.set_dpi(100 * ratio)
+    
+    if dim == 2:
+        ax = fig.add_subplot(111)
+    elif dim == 3:
+        ax = fig.add_subplot(111, projection='3d')
 
     # https://stackoverflow.com/questions/14908576
     ax.get_xaxis().set_ticks([])
     ax.get_yaxis().set_ticks([])
+    if dim == 3:
+        ax.get_zaxis().set_ticks([])
+        
+        # Also: In the 3D case we always want to show the axis, because 3D structures are not really 
+        # interpretable without them.
+        show_axis = True
 
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    ax.spines['bottom'].set_visible(False)
-    ax.spines['left'].set_visible(False)
-    ax.axis('off')
+    ax.spines['top'].set_visible(show_spines)
+    ax.spines['right'].set_visible(show_spines)
+    ax.spines['bottom'].set_visible(show_spines)
+    ax.spines['left'].set_visible(show_spines)
+    if not show_axis:
+        ax.axis('off')
 
     # Selecting the axis-X making the bottom and top axes False.
     plt.tick_params(axis='x', which='both', bottom=False,
@@ -84,6 +96,8 @@ def create_frameless_figure(width: int = 100,
 
     setattr(fig, '_savefig', fig.savefig)
     setattr(fig, 'savefig', types.MethodType(savefig, fig))
+    
+    fig.tight_layout(pad=0, h_pad=0, w_pad=0)
 
     return fig, ax
 

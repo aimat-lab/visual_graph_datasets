@@ -9,6 +9,7 @@ import networkx as nx
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import proj3d
 
 import visual_graph_datasets.typing as tv
 from visual_graph_datasets.data import DatasetWriterBase
@@ -129,9 +130,12 @@ class ColorProcessing(ProcessingBase):
                             value: tv.DomainRepr,
                             width: int = 1000,
                             height: int = 1000,
-                            layout_strategy: str = DEFAULT_STRATEGY,
+                            layout_strategy: str = DEFAULT_STRATEGY,  # deprecated
                             graph: t.Optional[tv.GraphDict] = None,
                             node_positions: t.Optional[np.ndarray] = None,
+                            dim: int = 2,
+                            k: float = 1.0,
+                            visualize_func: t.Callable = visualize_color_graph,
                             **kwargs,
                             ) -> t.Tuple[plt.Figure, np.ndarray]:
         """
@@ -145,14 +149,26 @@ class ColorProcessing(ProcessingBase):
         :param value: The cogiles domain representation of the color graph.
         :param width: The width of the resulting image in pixels.
         :param height: The height of the resulting image in pixels.
-        :param layout_strategy: The layout strategy to use for the visualization.
         :param graph: The graph dict representation of the color graph. This is optional. If this is given 
             the ``value`` parameter is ignored and the graph is used directly for the visualization.
         :param node_positions: The node positions array of shape (V, 2). This is optional. If this is given
             the ``layout_strategy`` parameter is ignored and the node positions are used directly for the 
             visualization.
+        :param dim: The dimension of the visualization. This can be either "2" or "3". If this is set to "3"
+            the visualization will be a 3D visualization using an isometric view of the coordinate system 
+            as the backdrop.
+        :param k: A float number that controls the attractive force between the nodes in the spring layouting 
+            algorithm that is used to arrange the nodes in space.
+        :param visualize_func: The visualization function that is used to visualize the graph. This function 
+            should accept three arguments: ``ax`` - the Axes object on which to draw the visualization. 
+            ``g`` - the graph dict representation of the graph to be drawn (this for example contains the 
+            information about the colors of the nodes). ``node_positions`` - the node positions array of shape
+            (V, 2) which contains the pixel coordinates of the nodes in the visualization.
+            If the ``dim`` argument is set to "3", the ``ax`` argument will be an Axes3D object and the 
+            ``node_positions`` argument will be a 3D array of shape (V, 3).
         
-        :returns: The figure and the node positions array of shape (V, 2).
+        :returns: The figure and the node positions array of shape (V, 2). The node positions are coordinates 
+            in the pixel coordinate system of the image that is exported from the figure.
         """
         # 15.11.23
         # Changed this section to provide the option to directly provide the graph dict representation 
@@ -167,31 +183,65 @@ class ColorProcessing(ProcessingBase):
         # node_positions are not given, we use the layout_node_positions function to calculate them which 
         # internally uses a networkx layouting function with the given layout strategy.
         
-        # node_positions: (V, 2)
-        if node_positions is None:  
-            node_positions = layout_node_positions(
-                g=graph,
-                layout_cb=self.LAYOUT_STRATEGY_MAP[layout_strategy],
-            )
+        # node_positions: (V, 2) or (V, 3) depending on "dim"
+        graph_nx = nx_from_graph(graph)
+        # 28.03.24
+        # Previously, this was using the "layout_strategy" parameter to determine the layouting function 
+        # dynamically, but with the extension towards optional 3D visualizations, dragging this along 
+        # was too much hassle - therefore now fixed to be colors_layout, which internally uses
+        # nx.spring_layout to determine the node positions.
+        node_positions = colors_layout(
+            graph_nx,
+            node_positions=node_positions,
+            dim=dim,
+            k=k,
+        )
+        node_positions = np.array(list(node_positions.values()))
 
         # ~ creating the actual figure
         # create_frameless_figure is a helper function which creates a figure with the given width and height
         # without any axis or frame. This is useful for the visualization of the graph because we don't want
         # any axis or frame to be visible in the visualization.
-        fig, ax = create_frameless_figure(width=width, height=height)
-        visualize_color_graph(
+        fig, ax = create_frameless_figure(width=width, height=height, dim=dim)
+        
+        # 27.03.24
+        # Previously this was hardcoded to "visualize_color_graph" but that function only visualizes the 
+        # graph on a euclidean 2D plane. When extending to different modes of visualization, such as 3D, it 
+        # will be necessary to supply a custom visualization function. 
+        visualize_func(
             ax=ax,
             g=graph,
-            node_positions=node_positions
+            node_positions=node_positions,
         )
 
         # The "node_positions" which are returned by the above function are values within the axes object
         # coordinate system. Using the following piece of code we transform these into the actual pixel
-        # coordinates of the figure image.
-        node_positions = [[int(v) for v in ax.transData.transform((x, y))]
-                          for x, y in node_positions]
-        node_positions = np.array(node_positions)
+        # coordinates of the exported image.
+        
+        if dim == 2:
+            # ax.transData can be used for exactly that purpose with transforms from and to between the 
+            # internal axes coordinates and the overall figure coordinates. 
+            node_positions = [[int(v) for v in ax.transData.transform(pos)]
+                            for pos in node_positions]
+            node_positions = np.array(node_positions)
+            
+        elif dim == 3:
+            # in the 3D case this process is a bit more complicated. First we need to use the proj3d utility 
+            # function to project the 3D internal coordinates into a 2D coordinates of the axes object.
+            # Only then can we apply the same transform as in the 2D case.
+            node_positions_mapped = []
+            for x, y, z in node_positions:
+                x2d, y2d, _ = proj3d.proj_transform(x, y, z, ax.get_proj())
 
+                # Now we transform the 2D display coordinates to pixel coordinates
+                xpix, ypix = ax.transData.transform((x2d, y2d))
+                node_positions_mapped.append([xpix, ypix])
+                
+            node_positions = np.array(node_positions_mapped)
+
+        # We return the figure object itself and the node_positions array that has been calculated 
+        # to contain the 2D pixel coordinates of all the nodes in the pixel coordinate system of 
+        # the figure.
         return fig, node_positions
 
     def visualize(self,
