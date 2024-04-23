@@ -13,6 +13,15 @@ import typing as t
 
 # from pycomex.experiment import SubExperiment
 # from pycomex.util import Skippable
+import rdkit.Chem as Chem
+from visual_graph_datasets.processing.base import identity, list_identity
+from visual_graph_datasets.processing.base import create_processing_module
+from visual_graph_datasets.processing.base import ProcessingError
+from visual_graph_datasets.processing.molecules import chem_prop, chem_descriptor
+from visual_graph_datasets.processing.molecules import OneHotEncoder
+from visual_graph_datasets.processing.molecules import MoleculeProcessing
+from visual_graph_datasets.processing.molecules import crippen_contrib, lasa_contrib, tpsa_contrib
+from visual_graph_datasets.processing.molecules import gasteiger_charges, estate_indices
 from pycomex.functional.experiment import Experiment
 from pycomex.utils import folder_path, file_namespace
 
@@ -118,6 +127,143 @@ GRAPH_METADATA_CALLBACKS = {
     'label': lambda mol, data: data['label'],
     'smiles': lambda mol, data: data['smiles'],
 }
+
+class AggregatorMoleculeProcessing(MoleculeProcessing):
+
+    node_attribute_map = {
+        'symbol': {
+            'callback': chem_prop('GetSymbol', OneHotEncoder(
+                ['H', 'C', 'N', 'O', 'B', 'F', 'Si', 'P', 'S', 'Cl', 'As', 'Se', 'Br', 'Te', 'I', 'At'],
+                add_unknown=True,
+                dtype=str
+            )),
+            'description': 'one-hot encoding of atom type',
+            'is_type': True,
+            'encodes_symbol': True, 
+        },
+        'hybridization': {
+            'callback': chem_prop('GetHybridization', OneHotEncoder(
+                [2, 3, 4, 5, 6],
+                add_unknown=True,
+                dtype=int,
+            )),
+            'description': 'one-hot encoding of atom hybridization',
+        },
+        'total_degree': {
+            'callback': chem_prop('GetTotalDegree', OneHotEncoder(
+                [0, 1, 2, 3, 4, 5],
+                add_unknown=False,
+                dtype=int
+            )),
+            'description': 'one-hot encoding of the degree of the atom'
+        },
+        'num_hydrogen_atoms': {
+            'callback': chem_prop('GetTotalNumHs', OneHotEncoder(
+                [0, 1, 2, 3, 4],
+                add_unknown=False,
+                dtype=int
+            )),
+            'description': 'one-hot encoding of the total number of attached hydrogen atoms'
+        },
+        'mass': {
+            'callback': chem_prop('GetMass', list_identity),
+            'description': 'The mass of the atom'
+        },
+        # 'charge': {
+        #     'callback': chem_prop('GetFormalCharge', list_identity),
+        #     'description': 'The charge of the atom',
+        # },
+        'is_aromatic': {
+            'callback': chem_prop('GetIsAromatic', list_identity),
+            'description': 'Boolean flag of whether the atom is aromatic',
+        },
+        'is_in_ring': {
+            'callback': chem_prop('IsInRing', list_identity),
+            'description': 'Boolean flag of whether atom is part of a ring'
+        },
+        'crippen_contributions': {
+            'callback': crippen_contrib(),
+            'description': 'The crippen logP contributions of the atom as computed by RDKit'
+        },
+        'tpsa_contribution': {
+            'callback': tpsa_contrib(),
+            'description': 'Contribution to TPSA as computed by RDKit',
+        },
+        'lasa_contribution': {
+            'callback': lasa_contrib(),
+            'description': 'Contribution to ASA as computed by RDKit'
+        },
+        # 'gasteiger_charge': {
+        #     'callback': gasteiger_charges(),
+        #     'description': 'The partial gasteiger charge attributed to atom as computed by RDKit'
+        # },
+        'estate_indices': {
+            'callback': estate_indices(),
+            'description': 'EState index as computed by RDKit'
+        }
+    }
+
+    edge_attribute_map = {
+        'bond_type': {
+            'callback': chem_prop('GetBondType', OneHotEncoder(
+                [1, 2, 3, 12],
+                add_unknown=False,
+                dtype=int,
+            )),
+            'description': 'one-hot encoding of the bond type',
+            'is_type': True,
+            'encodes_bond': True,
+        },
+        'stereo': {
+            'callback': chem_prop('GetStereo', OneHotEncoder(
+                [0, 1, 2, 3],
+                add_unknown=False,
+                dtype=int,
+            )),
+            'description': 'one-hot encoding of the stereo property'
+        },
+        'is_aromatic': {
+            'callback': chem_prop('GetIsAromatic', list_identity),
+            'description': 'boolean flag of whether bond is aromatic',
+        },
+        'is_in_ring': {
+            'callback': chem_prop('IsInRing', list_identity),
+            'description': 'boolean flag of whether bond is part of ring',
+        },
+        'is_conjugated': {
+            'callback': chem_prop('GetIsConjugated', list_identity),
+            'description': 'boolean flag of whether bond is conjugated'
+        }
+    }
+
+    graph_attribute_map = {
+        'molecular_weight': {
+            'callback': chem_descriptor(Chem.Descriptors.ExactMolWt, list_identity),
+            'description': 'the exact molecular weight of the molecule',
+        },
+        'num_radical_electrons': {
+            'callback': chem_descriptor(Chem.Descriptors.NumRadicalElectrons, list_identity),
+            'description': 'the total number of radical electrons in the molecule',
+        },
+        'num_valence_electrons': {
+            'callback': chem_descriptor(Chem.Descriptors.NumValenceElectrons, list_identity),
+            'description': 'the total number of valence electrons in the molecule'
+        }
+    }
+
+
+# :param PROCESSING:
+#       A MoleculeProcessing instance which will be used to convert the molecule smiles representations 
+#       into strings. 
+PROCESSING = AggregatorMoleculeProcessing()
+# :param UNDIRECTED_EDGES_AS_TWO:
+#       If this flag is True, the undirected edges which make up molecular graph will be converted into two
+#       opposing directed edges. Depends on the downstream ML framework to be used.
+UNDIRECTED_EDGES_AS_TWO: bool = True
+# :param USE_NODE_COORDINATES:
+#       If this flag is True, the coordinates of each atom will be calculated for each molecule and the resulting
+#       3D coordinate vector will be added as a separate property of the resulting graph dict.
+USE_NODE_COORDINATES: bool = False
 
 # == EVALUATION PARAMETERS ==
 # These parameters control the evaluation process which included the plotting of the dataset statistics 

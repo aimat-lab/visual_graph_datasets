@@ -159,7 +159,7 @@ class ColorProcessing(ProcessingBase):
             as the backdrop.
         :param k: A float number that controls the attractive force between the nodes in the spring layouting 
             algorithm that is used to arrange the nodes in space.
-        :param visualize_func: The visualization function that is used to visualize the graph. This function 
+        :param t: The visualization function that is used to visualize the graph. This function 
             should accept three arguments: ``ax`` - the Axes object on which to draw the visualization. 
             ``g`` - the graph dict representation of the graph to be drawn (this for example contains the 
             information about the colors of the nodes). ``node_positions`` - the node positions array of shape

@@ -11,6 +11,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 from imageio.v2 import imread
 
 import visual_graph_datasets.typing as tc
+from visual_graph_datasets.util import DEFAULT_CHANNEL_INFOS
 from visual_graph_datasets.util import NULL_LOGGER
 from visual_graph_datasets.util import array_normalize
 from visual_graph_datasets.util import binary_threshold
@@ -33,6 +34,7 @@ def plot_node_importances_background(ax: plt.Axes,
                                      v_min: float = 0.0,
                                      v_max: float = 1.0,
                                      zorder: int = -100,
+                                     **kwargs,
                                      ):
     """
     Given an Axes ``ax`` to draw on and a graph dict ``g`` and the pixel ``node_positions``, this 
@@ -62,6 +64,21 @@ def plot_node_importances_background(ax: plt.Axes,
         x, y = node_positions[i]
         importance = node_importances[i]
 
+        # We first add a non-transparent white circle into the background of the node with basically the same 
+        # radius as the importance highlighting circle. This is done to make the importance circle stand out
+        # and most importantly to block the edge importance markings from overlapping with the node importance 
+        # circle. Since both of these are drawn with some transparency they would cause weird looking artifacts
+        # at their intersections.
+        circle_background = plt.Circle(
+            (x, y),
+            radius=radius * 0.99,
+            lw=0,
+            color='white',
+            fill='white',
+            zorder=zorder - 10,
+        )
+        ax.add_artist(circle_background)
+
         value = normalize(importance)
         circle = plt.Circle(
             (x, y),
@@ -86,6 +103,7 @@ def plot_edge_importances_background(ax: plt.Axes,
                                      v_min: float = 0.0,
                                      v_max: float = 1.0,
                                      zorder: int = -200,
+                                     **kwargs,
                                      ):
     """
     Given an Axes ``ax`` to draw on and a graph dict ``g`` and the pixel ``node_positions``, this 
@@ -391,13 +409,17 @@ def create_combined_importances_pdf(graph_list: t.List[tc.GraphDict],
                                     edge_importances_list: t.List[np.ndarray],
                                     output_path: str,
                                     channel_colors_map: t.Optional[t.List[str]],
+                                    channel_infos: list[dict] = DEFAULT_CHANNEL_INFOS,
                                     label_list: t.Optional[t.List[str]] = None,
                                     importance_threshold: t.Optional[float] = None,
                                     channel_limit_map: t.Optional[dict[int, float]] = None,
                                     base_fig_size: float = 8,
                                     show_ticks: bool = False,
+                                    radius: float = 50.0,
+                                    thickness: float = 20.0,
                                     logger: logging.Logger = NULL_LOGGER,
                                     log_step: int = 100,
+                                    cache_path: t.Optional[str] = None,
                                     ):
     """
     This function will create a PDF file which contains the visualizations of multiple graph elements and their 
@@ -427,6 +449,10 @@ def create_combined_importances_pdf(graph_list: t.List[tc.GraphDict],
         will be used to encode the channel fidelity values. The keys of this dict are the channel indices and the
         values are the colormaps. The number of channels must match the number of channels in the given node and edge
         importances arrays.
+    :param channel_infos: This is a dictionary whose keys are the integer indices of the explanation channels that 
+        are being used for the visualization. The values of this dictionary are themselves dictionaries that contain
+        additional information about the explanation channels. The keys of these inner dictionaries are the string
+        names of these additional properties. The following properties are required: 'name' (the name of the channel),
     :param label_list: A list of string labels that will be attached to the visualizations in the format of a title
         for the page.
     :param importance_threshold: A float value that will be used to threshold the importance values. If a threshold
@@ -436,9 +462,15 @@ def create_combined_importances_pdf(graph_list: t.List[tc.GraphDict],
         defined as the 90th percentiles of the fidelity values across all the given graphs.
     :param base_fig_size: The size of the figures. Modification of this value will influence the file size of the PDF
         and the ratio of the size of the text and image elements within each page of the PDF.
+    :param radius: The radius of the the node importance circles that will be drawn on the graph visualization. The 
+        bigger this value, the larger the circles around each node will be.
+    :param thickness: The thickness of the edge importance lines that will be drawn on the graph visualization. The
+        bigger this value, the thicker the lines will be.
     :param show_ticks: A boolean value that determines if the ticks of the axis should be shown or not.
     :param logger: A logger instance that will be used to log the progress of the function.
     :param log_step: An integer value that determines how often the function should log the progress.
+    :param cache_path: A string path to a cache directory. If this path is given, the function will try to cache the
+        graph visualizations in this directory. This can be useful if the visualizations are expensive to compute.
     
     :returns: None
     """
@@ -494,19 +526,27 @@ def create_combined_importances_pdf(graph_list: t.List[tc.GraphDict],
             # Then we draw the same importance for every 
             for channel_index, cmap in channel_colors_map.items():
                 
+                # 24.04.24
+                # This dict contains additional information about the explanation channels that are 
+                # being used for the visualization. The keys of this dict are the string names of these 
+                # additional properties.
+                info: dict = channel_infos[channel_index]
+                
                 fidelity_channel: float = graph_fidelity[channel_index]
                 
                 norm = mcolors.Normalize(vmin=0, vmax=channel_limit_map[channel_index])
                 color = cmap(norm(fidelity_channel))
                 
                 scalar_mappable = cm.ScalarMappable(cmap=cmap, norm=norm)
-                fig.colorbar(
+                colorbar = fig.colorbar(
                     scalar_mappable, 
                     ax=ax, 
                     orientation='vertical', 
                     pad=0.05, 
                     shrink=0.6,
                 )
+                # We want to use the name of the explanation channel as the label of the color bar!
+                colorbar.set_label(info['name'], rotation=270, labelpad=20)
                 
                 plot_node_importances_background(
                     ax=ax,
@@ -514,7 +554,7 @@ def create_combined_importances_pdf(graph_list: t.List[tc.GraphDict],
                     node_positions=node_positions,
                     node_importances=node_importances[:, channel_index],
                     color=color,
-                    radius=50,
+                    radius=radius,
                 )
                 plot_edge_importances_background(
                     ax=ax,
@@ -522,7 +562,8 @@ def create_combined_importances_pdf(graph_list: t.List[tc.GraphDict],
                     node_positions=node_positions,
                     edge_importances=edge_importances[:, channel_index],
                     color=color,
-                    thickness=10,
+                    thickness=thickness,
+                    radius=radius,
                 )
             
             # There is also the option to attach a string label to every visualization in the format of 

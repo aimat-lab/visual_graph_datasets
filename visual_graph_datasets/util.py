@@ -7,6 +7,7 @@ import difflib
 import subprocess
 import importlib.util
 import typing as t
+from collections import defaultdict
 
 import click
 import jinja2 as j2
@@ -30,6 +31,19 @@ VERSION_PATH = os.path.join(PATH, 'VERSION')
 
 NULL_LOGGER = logging.Logger('null')
 NULL_LOGGER.addHandler(logging.NullHandler())
+
+# 24.12.24
+# Some functions will required a "channel_infos" parameter which is supposed to be a dictionary 
+# whose keys are the integer indices of the explanation channels and the corresponding values are 
+# dictionaries themselves which associate string property names for additional information about 
+# the corresponding channel. 
+# This dictionary provides a default value for those cases. The defaultdict implementation ensures 
+# that it works for any channel index given as a key and the it will return always the same 
+# info dict with the default values.
+DEFAULT_CHANNEL_INFOS: dict[str, t.Any] = defaultdict(lambda: {
+    'name': 'channel',
+    'color': 'lightgray',
+})
 
 
 def get_experiment_path(name: str) -> str:

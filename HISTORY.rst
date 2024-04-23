@@ -409,3 +409,9 @@ Bugfixes
 -------------------
 
 - Fixed the dependency error where utils imported from ``graph_attention_student`` have caused a circular import error
+
+0.15.5 - 09.04.2024
+-------------------
+
+- Extended the ``ColorsProcesing`` class to also support 3D graph structures now.
+- Added an experiment module to process the COMPAS dataset of polybenzenes molecular property predictions
