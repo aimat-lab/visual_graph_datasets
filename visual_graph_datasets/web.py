@@ -110,7 +110,7 @@ class NextcloudFileShare(AbstractFileShare):
             # error message in case the download could not proceed correctly.
             if r.status_code != 200:
                 raise ConnectionError(f'There was an error during the download of the file "{file_name}" from the '
-                                      f'file share provider "{self.provider_id}". This most likely means that there exists no '
+                                      f'file share provider "{self.url}". This most likely means that there exists no '
                                       f'dataset with the given name on that file share. However, it could also indicate '
                                       f'connectivity issues in general - so please check your internet connection.')
             

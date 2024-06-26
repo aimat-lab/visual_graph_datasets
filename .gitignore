@@ -1,2 +1,26 @@
+# exclude experiment results
 visual_graph_datasets/experiments/results/*
+visual_graph_datasets/examples/results/*
+
+# exclude experiment assets
+visual_graph_datasets/experiments/assets/*
+
+# exclude python cache
+__pycache__/*
+tests/__pycache__/*
+visual_graph_datasets/__pycache__/*
+visual_graph_datasets/experiments/__pycache__/*
+visual_graph_datasets/processing/__pycache__/*
+visual_graph_datasets/visualization/__pycache__/*
+visual_graph_datasets/generation/__pycache__/*
+
+# exclude test artifacts
+tests/artifacts/*
+
+# exclude IDE specific structures
+.idea/*
+.vscode/*
+
+# exlude build artifacts & environment
+dist/*
 venv/*

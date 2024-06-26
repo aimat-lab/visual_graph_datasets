@@ -688,6 +688,7 @@ class MoleculeProcessing(ProcessingBase):
                 value: str,
                 double_edges_undirected: bool = True,
                 use_node_coordinates: bool = False,
+                node_coordinates: t.Optional[np.ndarray] = None,
                 graph_labels: list = [],
                 ) -> dict:
         """
@@ -715,10 +716,10 @@ class MoleculeProcessing(ProcessingBase):
         # So as a solution we introduce here the option to generate the graph based on a Mol object
         # directly instead of having to use the SMILES every time. This could potentially be slightly
         # more efficient as well.
-        if isinstance(value, Chem.Mol):
+        if isinstance(value, (Chem.Mol, Chem.RWMol)):
             mol = value
             smiles = Chem.MolToSmiles(mol)
-        else:
+        elif isinstance(value, str):
             smiles = value
             mol = Chem.MolFromSmiles(smiles)
 
@@ -778,21 +779,22 @@ class MoleculeProcessing(ProcessingBase):
         # core of the graph dict - they always have to be present. All the following code after that is
         # optional additions which can be added to support certain additional features
         graph: tc.GraphDict = {
-            'node_indices':         node_indices,
+            'node_indices':         np.array(node_indices, dtype=int),
             'node_attributes':      np.array(node_attributes, dtype=float),
-            'edge_indices':         edge_indices,
+            'edge_indices':         np.array(edge_indices, dtype=int),
             'edge_attributes':      np.array(edge_attributes, dtype=float),
             'graph_attributes':     np.array(graph_attributes, dtype=float),
-            'graph_labels':         graph_labels,
+            'graph_labels':         np.array(graph_labels),
             # 14.02.24 - Initially I wanted to avoid addding the string graph representation to the graph 
             # dictionary itself, because I kind of wanted all of the values to be numpy array. However, I 
             # have now hit a problem where this is pretty much necessary.
-            'graph_repr':           value,
+            'graph_repr':           smiles,
         }
 
         # Optionally, if the flag is set, this will apply a conformer on the molecule which will
         # then calculate the 3D coordinates of each atom in space.
         if use_node_coordinates:
+            
             try:
                 # # https://sourceforge.net/p/rdkit/mailman/message/33386856/
                 # try:
@@ -806,8 +808,13 @@ class MoleculeProcessing(ProcessingBase):
                 # Previously we tried to do the MMFF optimization here, but now we simply commit to the UFF 
                 # optimization which is a bit faster and should be sufficient for our purposes.
                 mol = Chem.AddHs(mol)
-                AllChem.EmbedMolecule(mol, AllChem.ETKDG())
-                AllChem.UFFOptimizeMolecule(mol)
+                params = AllChem.ETKDGv3()
+                params.useBasicKnowledge = True
+                params.useRandomCoords = True
+                params.randomSeed = 0xF00D
+                AllChem.EmbedMolecule(mol, params)
+                #AllChem.UFFOptimizeMolecule(mol)
+                AllChem.MMFFOptimizeMolecule(mol)
                 mol = Chem.RemoveHs(mol)
 
                 conformer = mol.GetConformers()[0]
@@ -816,18 +823,21 @@ class MoleculeProcessing(ProcessingBase):
 
                 # Now that we have the 3D coordinates for every atom, we can also calculate the length of all
                 # the bonds from that!
-                edge_lengths = []
-                for i, j in graph['edge_indices']:
-                    c_i = graph['node_coordinates'][i]
-                    c_j = graph['node_coordinates'][j]
-                    length = la.norm(c_i - c_j)
-                    edge_lengths.append([length])
-
-                graph['edge_lengths'] = np.array(edge_lengths)
+                graph['edge_lengths'] = self.calculate_edge_lengths(node_coordinates, graph['edge_indices'])
 
             except Exception as exc:
                 raise ProcessingError(f'Cannot calculate node_coordinates for the given '
                                       f'molecule with smiles code: {smiles}')
+                
+        # 16.06.2024
+        # We want to provide the option to add the node coordinates to the graph dict representation as an 
+        # external argument. This is because we also want to support datasets which do contain the atom 
+        # coordinates as part of the dataset itself!
+        # If that argument is given we will override the calculated node coordinates (if they exist).
+        if node_coordinates is not None:
+            
+            graph['node_coordinates'] = node_coordinates
+            graph['edge_lengths'] = self.calculate_edge_lengths(node_coordinates, graph['edge_indices'])
 
         return graph
 
@@ -858,8 +868,13 @@ class MoleculeProcessing(ProcessingBase):
             molecular graph and the second element is a numpy array of shape (V, 2) where V is the number of 
             nodes in the graph and which assigns the 2D pixel coordinates of each of the nodes.
         """
-        smiles = value
-        mol = mol_from_smiles(smiles)
+        if isinstance(value, (Chem.Mol, Chem.RWMol)):
+            mol = value
+            smiles = Chem.MolToSmiles(mol)
+        elif isinstance(value, str):
+            smiles = value
+            mol = Chem.MolFromSmiles(smiles)
+        
         fig, ax = create_frameless_figure(width=width, height=height)
         node_positions, svg_string = visualize_molecular_graph_from_mol(
             ax=ax,
@@ -931,6 +946,7 @@ class MoleculeProcessing(ProcessingBase):
                create_svg: bool = False,
                output_path: str = os.getcwd(),
                writer: t.Optional[VisualGraphDatasetWriter] = None,
+               node_coordinates: t.Optional[np.ndarray] = None,
                **kwargs,
                ):
         """
@@ -945,15 +961,20 @@ class MoleculeProcessing(ProcessingBase):
         the given OUTPUT_PATH folder. The files will have the name which is simply a number that is
         specified with the INDEX option.
         """
-        smiles = value
+        if isinstance(value, (Chem.Mol, Chem.RWMol)):
+            mol = value
+            smiles = Chem.MolToSmiles(mol)
+        elif isinstance(value, str):
+            smiles = value
+            mol = Chem.MolFromSmiles(smiles)
+        
         g = self.process(
-            smiles,
+            value=value,
             double_edges_undirected=double_edges_undirected,
             use_node_coordinates=use_node_coordinates,
+            node_coordinates=node_coordinates,
         )
-        g.update({
-            **additional_graph_data,
-        })
+        g.update(additional_graph_data)
         fig, node_positions = self.visualize_as_figure(
             value=value,
             width=width,
@@ -1041,6 +1062,29 @@ class MoleculeProcessing(ProcessingBase):
         return description_map
 
     # -- utils --
+
+    def calculate_edge_lengths(self, 
+                               node_coordinates: np.ndarray, 
+                               edge_indices: np.ndarray,
+                               ) -> np.ndarray:
+        """
+        Given the array of ``node_coordinates`` with the shape (num_nodes, 3) and the array of the 
+        ``edge_indices`` with the shape (num_edges, 2), this method will calculate the length of each
+        edge in the graph and return an array of edge lengths with the shape (num_edges, 1).
+        
+        :param node_coordinates: The array of node coordinates with the shape (num_nodes, 3)
+        :param edge_indices: The array of edge indices with the shape (num_edges, 2)
+        
+        :returns: An array of edge lengths with the shape (num_edges, 1)
+        """
+        edge_lengths = []
+        for i, j in edge_indices:
+            c_i = node_coordinates[i]
+            c_j = node_coordinates[j]
+            length = la.norm(c_i - c_j)
+            edge_lengths.append([length])
+
+        return np.array(edge_lengths)
 
     def save_svg(self, content: str, path: str):
         with open(path, mode='w') as file:

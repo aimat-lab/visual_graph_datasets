@@ -1,7 +1,7 @@
 import shutil
 import tempfile
 
-import click
+import rich_click as click
 import os
 import json
 import yaml

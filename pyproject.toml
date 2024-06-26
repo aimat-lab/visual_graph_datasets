@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "visual_graph_datasets"
-version = "0.15.5"
+version = "0.15.6"
 description = "Datasets for the training of graph neural networks (GNNs) and subsequent visualization of attributional explanations of XAI methods"
 license = "MIT"
 authors = ["awa59kst120df <awa59kst120df@gmail.com>"]
@@ -25,10 +25,14 @@ exclude = [
     "visual_graph_datasets/examples/results",
 ]
 
+[tool.poetry.scripts]
+vgd = 'visual_graph_datasets.cli:cli'
+
 [tool.poetry.dependencies]
 python = ">=3.9,<=3.16"
 poetry-bumpversion = ">=0.3.0"
-click = ">=8.1.7,<8.2.0"
+# click = ">=8.1.7,<8.2.0"
+rich_click = ">=1.8.3"
 jinja2 = ">=3.0.3"
 numpy = ">=1.22.0"
 matplotlib = ">=3.5.3"

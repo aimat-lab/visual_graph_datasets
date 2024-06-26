@@ -415,3 +415,11 @@ Bugfixes
 
 - Extended the ``ColorsProcesing`` class to also support 3D graph structures now.
 - Added an experiment module to process the COMPAS dataset of polybenzenes molecular property predictions
+
+0.15.6 - 09.04.2024
+-------------------
+
+- Modified ``pyproject.toml``
+  - The command line interface is now installed as the "vgd" command
+  - moved from using ``click`` for the command line interface to using ``rich-click`` which is a fork of 
+    ``click`` that adds rich text support to the command line interface
