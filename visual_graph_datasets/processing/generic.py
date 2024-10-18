@@ -219,3 +219,17 @@ class GenericProcessing(ProcessingBase):
             metadata=metadata,
             figure=fig,
         )
+        
+    def get_num_node_attributes(self) -> int:
+        """
+        This method returns the number of node attributes that are present in the graph representation.
+        A generic graph always has 1 node attribute which is a constant value.
+        """
+        return 1
+    
+    def get_num_edge_attributes(self) -> int:
+        """
+        This method returns the number of edge attributes that are present in the graph representation.
+        A generic graph always has 1 edge attribute which is a constant value.
+        """
+        return 1

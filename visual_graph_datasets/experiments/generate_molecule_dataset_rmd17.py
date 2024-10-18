@@ -18,6 +18,7 @@ from visual_graph_datasets.processing.base import create_processing_module
 from visual_graph_datasets.processing.molecules import MoleculeProcessing
 from visual_graph_datasets.processing.molecules import OneHotEncoder, list_identity, chem_prop
 from visual_graph_datasets.processing.molecules import crippen_contrib, tpsa_contrib, lasa_contrib, gasteiger_charges, estate_indices
+from visual_graph_datasets.visualization.base import create_frameless_figure, draw_image
 from visual_graph_datasets.data import VisualGraphDatasetWriter, VisualGraphDatasetReader
 from visual_graph_datasets.util import dynamic_import
 
@@ -27,32 +28,51 @@ ASSETS_PATH = os.path.join(PATH, 'assets')
 # == SOURCE PARAMETERS ==
 
 NPZ_PATH: str = os.path.join(ASSETS_PATH, 'rmd17_aspirin.npz')
-DISTANCE_THRESHOLD: float = 2.1
+DISTANCE_THRESHOLD: float = 5.0
 EDGE_INDICES = None
-# EDGE_INDICES: np.ndarray = np.array([
-#     [0, 2],
-#     [0, 5],
-#     [0, 14],
-#     [1, 3],
-#     [1, 6],
-#     [1, 15],
-#     [2, 3],
-#     [2, 16],
-#     [3, 17],
-#     [4, 11],
-#     [4, 18], 
-#     [4, 19], 
-#     [4, 20],
-#     [5, 6], 
-#     [5, 10],
-#     [6, 12],
-#     [7, 10],
-#     [8, 11],
-#     [9, 10],
-#     [9, 13],
-#     [11, 12], 
-#     [12, 11]
-# ])
+EDGE_INDICES: np.ndarray = np.array([
+    [0, 2],
+    [0, 5],
+    [0, 14],
+    [1, 3],
+    [1, 6],
+    [1, 15],
+    [2, 3],
+    [2, 16],
+    [3, 17],
+    [4, 11],
+    [4, 18], 
+    [4, 19], 
+    [4, 20],
+    [5, 6], 
+    [5, 10],
+    [6, 12],
+    [7, 10],
+    [8, 11],
+    [9, 10],
+    [9, 13],
+    [11, 12], 
+    # additional bonds
+    [19, 18],
+    [19, 20],
+    [20, 18],
+    [13, 10],
+    [15, 6],
+    [15, 3],
+    [17, 1],
+    [17, 2],
+    [16, 3],
+    [16, 0],
+    [14, 2],
+    [14, 5],
+    [10, 6],
+    [10, 0],
+    [8, 4],
+    [8, 12],
+    [12, 5],
+    [12, 1],
+    [7, 5],
+])
 
 # == PROCESSING PARAMETERS ==
 
@@ -111,16 +131,16 @@ class VgdMoleculeProcessing(MoleculeProcessing):
     }
 
     edge_attribute_map = {
-        'bond_type': {
-            'callback': chem_prop('GetBondType', OneHotEncoder(
-                [1, 2, 3, 12],
-                add_unknown=False,
-                dtype=int,
-            )),
-            'description': 'one-hot encoding of the bond type',
-            'is_type': True,
-            'encodes_bond': True,
-        },
+        # 'bond_type': {
+        #     'callback': chem_prop('GetBondType', OneHotEncoder(
+        #         [1, 2, 3, 12],
+        #         add_unknown=False,
+        #         dtype=int,
+        #     )),
+        #     'description': 'one-hot encoding of the bond type',
+        #     'is_type': True,
+        #     'encodes_bond': True,
+        # },
         'stereo': {
             'callback': chem_prop('GetStereo', OneHotEncoder(
                 [0, 1, 2, 3],
@@ -269,23 +289,22 @@ def experiment(e: Experiment):
         if index > num_elements:
             break
 
-    e.log('finished dataset processing...')
-    e.log('closing dataset writer...')
+    e.log('loading visual graph dataset...')
+    reader = VisualGraphDatasetReader(
+        path=dataset_path,
+        logger=e.logger,
+    )
+    index_data_map = reader.read()
+    
+    e.log('plotting example element...')
+    data: dict = next(iter(index_data_map.values()))
+    graph = data['metadata']['graph']
+    fig, ax = create_frameless_figure(width=1000, height=1000)
+    draw_image(ax, data['image_path'])
+    for index in graph['node_indices']:
+        ax.text(*graph['node_positions'][index], str(index))
+        
+    e.commit_fig('example.pdf', fig)
 
-
-@experiment.analysis
-def analysis(e: Experiment):
-    
-    e.log('starting analysis...')
-    
-    e.log('loading the processing instance...')
-    module = dynamic_import(e.path, 'process.py')
-    processing = module.processing
-    
-    e.log('loading the dataset...')
-    reader = VisualGraphDatasetReader()
-    dataset = reader.read()
-    e.log(f'loaded dataset with {len(dataset)} elements')
-    
 
 experiment.run_if_main()

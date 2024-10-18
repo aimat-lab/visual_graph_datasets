@@ -423,3 +423,9 @@ Bugfixes
   - The command line interface is now installed as the "vgd" command
   - moved from using ``click`` for the command line interface to using ``rich-click`` which is a fork of 
     ``click`` that adds rich text support to the command line interface
+
+0.15.7 - 16.10.2024
+-------------------
+
+- Added the ``get_num_node_attributes`` and ``get_num_edge_attributes`` functions to the 
+  ``Processing`` base interface.

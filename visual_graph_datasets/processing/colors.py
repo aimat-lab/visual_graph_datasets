@@ -361,6 +361,20 @@ class ColorProcessing(ProcessingBase):
                 metadata=metadata,
                 figure=fig,
             )
+            
+    def get_num_node_attributes(self) -> int:
+        """
+        Returns the number of node attributes of the color graph. A color graph always has 3 
+        node attributes which are the float RGB values.
+        """
+        return 3 
+    
+    def get_num_edge_attributes(self) -> int:
+        """
+        Returns the number of edge attributes of the color graph. A color graph always has 1
+        edge attribute which is a constant edge weight of 1.
+        """
+        return 1
 
     def get_description_map(self) -> dict:
         """

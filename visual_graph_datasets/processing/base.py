@@ -368,7 +368,6 @@ class ProcessingBase(click.MultiCommand):
         :rtype: bool
         """
         return np.isclose(edge_attributes_1, edge_attributes_2).all()
-    
 
     def process(self,
                 value: tv.DomainRepr,
@@ -540,6 +539,28 @@ class ProcessingBase(click.MultiCommand):
         section.
         """
         pass
+    
+    # 08.11.24 - The following two methods are necessary when constructing a new model from a pre-existing
+    # processing instance only. To construct the model one needs to know the input shapes which are derived 
+    # from the processing instance.
+    
+    def get_num_node_attributes(self) -> int:
+        """
+        This method is supposed to return the integer number of node features that each node of the 
+        processed graph representation has.
+        
+        :returns int:
+        """
+        raise NotImplementedError()
+    
+    def get_num_edge_attributes(self) -> int:
+        """
+        This method is supposed to return the integer number of edge features that each edge of the
+        processed graph representation has.
+        
+        :returns int:
+        """
+        raise NotImplementedError()
 
     # -- dynamic command generation magic --
 

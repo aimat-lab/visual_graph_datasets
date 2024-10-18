@@ -722,6 +722,8 @@ class MoleculeProcessing(ProcessingBase):
         elif isinstance(value, str):
             smiles = value
             mol = Chem.MolFromSmiles(smiles)
+        else:
+            raise TypeError('The value argument must be either a SMILES string or a RDKit Mol object')
 
         atoms = mol.GetAtoms()
         # First of all we iterate over all the atoms in the molecule and apply all the callback
@@ -1049,6 +1051,7 @@ class MoleculeProcessing(ProcessingBase):
                 description_map['edge_attributes'][index] = description
                 index += 1
 
+        
         # descriptions for the graph attributes
         index = 0
         for name, data in self.graph_attribute_map.items():
@@ -1060,6 +1063,32 @@ class MoleculeProcessing(ProcessingBase):
                 index += 1
 
         return description_map
+    
+    def get_num_node_attributes(self) -> int:
+        """
+        Returns the number of node attributes that are encoded in the node attribute map of this class.
+        
+        :returns: The number of node attributes
+        """
+        values = []
+        for name, data in self.node_attribute_map.items():
+            callback = data['callback']
+            values += callback(self.MOCK_ATOM)
+            
+        return len(values)
+    
+    def get_num_edge_attributes(self) -> int:
+        """
+        Returns the number of edge attributes that are encoded in the edge attribute map of this class.
+        
+        :returns: The number of edge attributes
+        """
+        values = []
+        for name, data in self.edge_attribute_map.items():
+            callback = data['callback']
+            values += callback(self.MOCK_BOND)
+        
+        return len(values)
 
     # -- utils --
 
