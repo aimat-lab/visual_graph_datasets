@@ -11,6 +11,7 @@ import click.testing
 import numpy as np
 import matplotlib.pyplot as plt
 import visual_graph_datasets.typing as tc
+from rich import print as pprint
 from visual_graph_datasets.graph import nx_from_graph
 from visual_graph_datasets.processing.base import create_processing_module
 from visual_graph_datasets.processing.base import EncoderBase
@@ -390,3 +391,28 @@ class TestMoleculeProcessing:
         # The default MoleculeProcessing class defines 4 edge attributes
         assert hasattr(processing, 'get_num_edge_attributes')
         assert processing.get_num_edge_attributes() == 4
+        
+    def test_node_atoms_and_bond_edges_attributes_work(self):
+        """
+        In the newest version, the result of the "process" method should also include the chemistry domain 
+        specific optional attributes "node_atoms" and "bond_edges" which are lists of string representations
+        of the atom types and bond types respectively.
+        """
+        processing = MoleculeProcessing()
+
+        smiles = 'CCCNC(=O)'
+        graph = processing.process(smiles)
+        pprint(graph)
+        
+        assert 'node_atoms' in graph
+        assert isinstance(graph['node_atoms'], np.ndarray) 
+        assert len(graph['node_atoms']) == len(graph['node_indices'])
+        # We know that there are only the following symbols in the given molecule
+        assert set(graph['node_atoms']) == {'C', 'N', 'O'}
+        
+        assert 'edge_bonds' in graph
+        assert isinstance(graph['edge_bonds'], np.ndarray) 
+        assert len(graph['edge_bonds']) == len(graph['edge_bonds'])
+        # We know that there are only the following edge types in the molecule
+        assert set(graph['edge_bonds']) == {'S', 'D'}
+        

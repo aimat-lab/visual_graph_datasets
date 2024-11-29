@@ -6,6 +6,7 @@ import re
 import inspect
 import json
 import typing as t
+import typing as typ
 
 import click
 import matplotlib.pyplot as plt
@@ -71,13 +72,31 @@ class EncoderBase:
         return self.encode(value, *args, **kwargs)
     
     def encode(self, value: t.Any, *args, **kwargs) -> t.List[float]:
-        raise NotImplemented()
+        raise NotImplementedError()
     
     def decode(self, encoded: t.List[float]) -> t.Any:
-        raise NotImplemented()
+        raise NotImplementedError()
+    
+    
+class StringEncoderMixin:
+    """
+    This is an interface which can optionally be implemented by an EncoderBase subclass to provide the 
+    additional functionality of encoding and decoding string representations of the domain values.
+    
+    Subclasses need to implement the following methods:
+    - ``encode_string``: Given the domain value to be encoded, this method will return a human-readable
+        string representation of that value.
+    - ``decode_string``: Given the string representation of a domain value, this method will return the
+        original domain value.
+    """
+    def encode_string(self, value: typ.Any) -> str:
+        raise NotImplementedError()
+    
+    def decode_string(self, string: str) -> typ.Any:
+        raise NotImplementedError()
 
 
-class OneHotEncoder(EncoderBase):
+class OneHotEncoder(EncoderBase, StringEncoderMixin):
     """
     This is the specific implementation of an attribute Encoder class for the process of 
     OneHotEncoding elements of different types.
@@ -89,28 +108,117 @@ class OneHotEncoder(EncoderBase):
     that matches the given element through an equality check.
     
     :param values: A list of elements which each will be checked when encoding an element
+    :param add_unknown: Boolean flag which determines whether an additional one-hot encoding 
+        element is added to the end of the list. This element will be used as the encoding for
+        any element which is not part of the original list of values. If this flag is False 
+        and an unkown element is otherwise encountered, the encoder will silently ignore it 
+        and return a vector of zeros.
+    :param unknown: The value which will be used as the encoding for any element which is not part
+        of the original list of values. This parameter is only relevant if the add_unknown flag is
+        set to True.
+    :param dtype: a type callable that defines the type of the elements in the ``values`` list
+    :param string_values: Optionally a list of string which provide human-readable string representations 
+        for each of the elements in the ``values`` parameter. Therefore, this list needs to be the same 
+        length as the ``values`` list. This parameter can optionally be None, in which case simply the 
+        str() transformation of the elements in the ``values`` list will be used as the string 
+        representations.
+    :param use_soft_decode: If this flag is set to True, instead of matching the given encoded vector 
+        exactly, the decoder will return the value which has the highest value in the encoded vector. 
+        This is useful when the encoded vector is not exactly one-hot encoded, but rather a probability 
+        distribution over the possible values.
     """
     def __init__(self,
                  values: t.List[t.Any],
                  add_unknown: bool = False,
                  unknown: t.Any = 'H',
-                 dtype: type = float):
+                 dtype: type = float,
+                 string_values: typ.Optional[list[str]] = None,
+                 use_soft_decode: bool = False,
+                 ):
+        EncoderBase.__init__(self)
+        StringEncoderMixin.__init__(self)
+        
         self.values = values
         self.add_unknown = add_unknown
         self.unknown = unknown
         self.dtype = dtype
+        self.use_soft_decode = use_soft_decode
+        
+        # We want the "string_values" to always be a list of strings. If the parameter is None that means 
+        # it is unnecessary to define a separate list and we can just use the "values" list as the string 
+        # representation as well.
+        if string_values is None:
+            self.string_values: list[str] = [str(v) for v in values]
+        else:
+            self.string_values: list[str] = string_values
 
     def __call__(self, value: t.Any, *args, **kwargs) -> t.List[float]:
         return self.encode(value)
+    
+    # implement "EncoderBase"
 
     def encode(self, value: t.Any, *args, **kwargs) -> t.List[float]:
+        """
+        Given the domain ``value`` to be encoded, this method will return a list of float values that 
+        represents the one-hot encoding corresponding to that exact value as defined by the list of possible 
+        values given to the constructor.
+        
+        :param value: The domain value to be encoded. Must be part of the list of values given to the
+            constructor - otherwise if add_unknown is True, the unknown one-hot encoding will be returned.
+        
+        :returns: list of float values which are either 1. or 0. (one-hot encoded)
+        """
         one_hot = [1. if v == self.dtype(value) else 0. for v in self.values]
         if self.add_unknown:
             one_hot += [0. if 1 in one_hot else 1.]
 
         return one_hot
-    
+        
     def decode(self, encoded: t.List[float]) -> t.Any:
+        """
+        Given the one-hot encoded representation ``encoded`` of a domain value, this method will return the
+        original domain value.
+        
+        Note that this method will try to do an exact match of the one-hot position. If the one-hot encoding
+        is not exact, then the "unknown" value will be returned.
+        
+        :returns: The domain value which corresponds to the given one-hot encoding. This will have whatever 
+            type the original domain values have.
+        """
+        if self.use_soft_decode:
+            return self.decode_soft(encoded)
+        else:
+            return self.decode_hard(encoded)
+    
+    def decode_soft(self, encoded: t.List[float]) -> typ.Any:
+        """
+        Given the one-hot encoded representation ``encoded`` of a domain value, this method will return the
+        original domain value. This method is a soft decoding method, which means that it will return the
+        value which has the highest value in the encoded vector. This is useful when the encoded vector is
+        not exactly one-hot encoded, but rather a probability distribution over the possible values.
+        
+        :param encoded: The one-hot encoded representation of the domain value
+        
+        :returns: The domain value which corresponds to the given one-hot encoding. This will have whatever
+            type the original domain values have.
+        """
+        max_index = np.argmax(encoded)
+        if max_index < len(self.values):
+            return self.values[max_index]
+        else:
+            return self.unknown
+    
+    def decode_hard(self, encoded: t.List[float]) -> typ.Any:
+        """
+        Given the one-hot encoded representation ``encoded`` of a domain value, this method will return the
+        original domain value. This method is a hard decoding method, which means that it will return the
+        value which has the exact one-hot encoding as the given encoded vector.
+        
+        :param encoded: The one-hot encoded representation of the domain value
+        
+        :returns: The domain value which corresponds to the given one-hot encoding. This will have whatever
+            type the original domain values have.
+        """
         for one_hot, value in zip(encoded, self.values):
             if one_hot:
                 return value
@@ -120,6 +228,40 @@ class OneHotEncoder(EncoderBase):
         # the constructor.
         return self.unknown
 
+    # implement "StringEncoderMixin"
+
+    def encode_string(self, value: typ.Any) -> str:
+        """
+        Given the domain ``value`` to be encoded, this method will return a human-readable string representation 
+        of that value.
+        
+        :param value: The domain value to be encoded. Must be part of the list of values given to the
+            constructor - otherwise if add_unknown is True, returns the string "unknown".
+        
+        :returns: A single string value which represents the given domain value
+        """
+        for v, s in zip(self.values, self.string_values):
+            if v == self.dtype(value):
+                return s
+    
+        return 'unknown'
+    
+    def decode_string(self, string: str) -> typ.Any:
+        """
+        Given the string representation ``string`` of a domain value, this method will return the original domain 
+        value.
+        
+        Note that this method will try to do an exact match of the string. If the string is not exact, then the 
+        "unknown" value will be returned.
+        
+        :returns: The domain value which corresponds to the given string representation. This will have whatever 
+            type the original domain values have.
+        """
+        for v, s in zip(self.values, self.string_values):
+            if s == string:
+                return v
+        
+        return self.unknown
 
 
 class ProcessingError(Exception):

@@ -16,6 +16,8 @@ from visual_graph_datasets.data import DatasetWriterBase
 from visual_graph_datasets.data import extract_graph_mask
 from visual_graph_datasets.data import nx_from_graph
 from visual_graph_datasets.processing.base import ProcessingBase
+from visual_graph_datasets.processing.base import StringEncoderMixin
+from visual_graph_datasets.processing.base import OneHotEncoder
 from visual_graph_datasets.visualization.base import layout_node_positions
 from visual_graph_datasets.visualization.base import create_frameless_figure
 from visual_graph_datasets.visualization.colors import visualize_color_graph
@@ -87,6 +89,32 @@ class ColorProcessing(ProcessingBase):
 
     DEFAULT_STRATEGY = 'colors'
 
+    # This encoder can be overwritten through the creation of a subclass of ColorProcessing. The only 
+    # constraint is that the encoder has to implement the StringEncoderMixin interface so that we can
+    # use the "encode_string" method. 
+    encoder: StringEncoderMixin = OneHotEncoder(
+        values = [
+            [1.0, 0.0, 0.0],  # RED
+            [0.0, 1.0, 0.0],  # GREEN
+            [0.0, 0.0, 1.0],  # BLUE
+            [1.0, 1.0, 0.0],  # YELLOW
+            [1.0, 0.0, 1.0],  # MAGENTA
+            [0.0, 1.0, 1.0],  # CYAN
+            [0.8, 0.8, 0.8],  # GREY
+        ],
+        dtype=list,
+        string_values = [
+            'R',  # RED
+            'G',  # GREEN
+            'B',  # BLUE
+            'Y',  # YELLOW
+            'M',  # MAGENTA
+            'C',  # CYAN
+            'H',  # GREY
+        ],
+        use_soft_decode=True,
+    )
+
     def process(self,
                 value: tv.DomainRepr,
                 *args,
@@ -109,6 +137,20 @@ class ColorProcessing(ProcessingBase):
             **graph,
             **additional_graph_data,
         }
+        
+        # 28.10.24 - Now it is possible to add a class property "encoder" to the color processing. This has to 
+        # be a class that implements the StringEncoderMixin interface so that we can use the "encode_string" method 
+        # here that encodes a node value into a human-readable string representation. We then attach this to the
+        # graph dict representation.
+        if self.encoder:
+            
+            node_colors: list[str] = []
+            for attr in graph['node_attributes']:
+                node_color: str = self.encoder.encode_string(attr)
+                node_colors.append(node_color)
+                
+            graph['node_colors'] = node_colors
+        
         return graph
 
     def unprocess(self,

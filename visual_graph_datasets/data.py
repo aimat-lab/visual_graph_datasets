@@ -9,6 +9,7 @@ import json
 import logging
 import shutil
 import typing as t
+from typing import Union, Optional
 
 import orjson
 import numpy as np
@@ -635,13 +636,13 @@ class VisualGraphDatasetWriter(DatasetWriterBase):
     """
     def __init__(self,
                  path: str,
-                 chunk_size: t.Optional[int] = None):
+                 chunk_size: Optional[int] = None):
         super(VisualGraphDatasetWriter, self).__init__(path, chunk_size)
 
     def write(self,
               name: t.Union[int, str],
-              metadata: t.Optional[dict],
-              figure: t.Optional[plt.Figure],
+              metadata: Optional[dict],
+              figure: Optional[Union[plt.Figure, str]],
               *args,
               **kwargs,
               ) -> None:

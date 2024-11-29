@@ -388,6 +388,9 @@ class MoleculeProcessing(ProcessingBase):
                 [1, 2, 3, 12],
                 add_unknown=False,
                 dtype=int,
+                # These are the (somewhat) human readable string representations of the bond types
+                # which are used for the "edge_bonds" list of the graph representation.
+                string_values=['S', 'D', 'T', 'A'] # Single, Double, Triple, Aromatic
             )),
             'description': 'One hot encoding of the bond type',
             'is_type': True,
@@ -729,8 +732,13 @@ class MoleculeProcessing(ProcessingBase):
         # First of all we iterate over all the atoms in the molecule and apply all the callback
         # functions on the atom objects which then calculate the actual attribute values for the final
         # node attribute vector.
-        node_indices = []
-        node_attributes = []
+        node_indices: list[int] = []
+        node_attributes: list[list[float]] = []
+        # Here we want to maintain a list of the the string atom symbols for each of the atom nodes as 
+        # we process the molecule graph structure.
+        # The goal is to have some kind of information such that a human could reconstruct 
+        # the molecule from the graph structure later on as well.
+        node_atoms: list[str] = []
         for atom in atoms:
             node_indices.append(atom.GetIdx())
 
@@ -745,10 +753,23 @@ class MoleculeProcessing(ProcessingBase):
 
             node_attributes.append(attributes)
 
+            # "symbol_encoder" is an Encoder specifically designed to encode the atom symbols into a 
+            # one-hot encoded vector. It has the additional method "encode_string" which encodes the 
+            # symbol into a human readable string.
+            if self.symbol_encoder:
+                atom_symbol = self.symbol_encoder.encode_string(atom.GetSymbol())
+                node_atoms.append(atom_symbol)
+
         bonds = mol.GetBonds()
         # Next up is the same with the bonds
-        edge_indices = []
-        edge_attributes = []
+        edge_indices: list[tuple[int, int]] = []
+        edge_attributes: list[list[float]] = []
+        # Here we want to maintain a list of the bond types for each of the edge nodes as we process the
+        # molecule graph structure. More specifically, we want to safe a human readable string representation 
+        # of the bond type. 
+        # The goal is to have some kind of information such that a human could reconstruct 
+        # the molecule from the graph structure later on as well.
+        edge_bonds: list[str] = []
         for bond in bonds:
             i = int(bond.GetBeginAtomIdx())
             j = int(bond.GetEndAtomIdx())
@@ -768,6 +789,10 @@ class MoleculeProcessing(ProcessingBase):
             edge_attributes.append(attributes)
             if double_edges_undirected:
                 edge_attributes.append(attributes)
+                
+            if self.bond_encoder:
+                bond_type: str = self.bond_encoder.encode_string(bond.GetBondType())
+                edge_bonds.append(bond_type)
 
         # Then there is also the option to add global graph attributes. The callbacks for this kind of
         # attribute take the entire molecule object as an argument rather than just atom or bond
@@ -792,6 +817,15 @@ class MoleculeProcessing(ProcessingBase):
             # have now hit a problem where this is pretty much necessary.
             'graph_repr':           smiles,
         }
+        
+        # 28.10.24 - Here we save some domain-specific additional information on the node and edge level.
+        # More specifically these are lists of human readable strings which contain the atom symbols and
+        # bond types respectively. The goal of this additional information is to provide a way for a human 
+        # to easily reconstruct the molecule from the graph representation as well.
+        if node_atoms:
+            graph['node_atoms'] = np.array(node_atoms, dtype=str)
+        if edge_bonds:
+            graph['edge_bonds'] = np.array(edge_bonds, dtype=str)
 
         # Optionally, if the flag is set, this will apply a conformer on the molecule which will
         # then calculate the 3D coordinates of each atom in space.

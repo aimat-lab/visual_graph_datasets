@@ -429,3 +429,16 @@ Bugfixes
 
 - Added the ``get_num_node_attributes`` and ``get_num_edge_attributes`` functions to the 
   ``Processing`` base interface.
+
+0.16.0 - 29.10.2024
+-------------------
+
+- Fixed the COGILES encoder. There was a bug in the cogiles encoder class which resulted in edges being duplicated 
+  in some cases. This is fixed now.
+- There is a test case now for the COGILES encoder which tests the encoder and decoder for a large number of 
+  randomly generated graphs to check if there are any other edge cases where the encoding or decoding fails.
+- Added the ``node_atoms`` and ``edge_bonds`` properties to the ``MoleculeProcessing`` class when returning the 
+  graph dict representation of a molecule. These properties return the atom and bond types respectively as 
+  human-readable strings.
+- Added an additional ``encoder`` class attribute to the ``ColorProcessing`` class which can be used to encode 
+  the (r,g,b) color values of the nodes and edges into a human-readable string representation.

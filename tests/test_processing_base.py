@@ -15,6 +15,7 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 import visual_graph_datasets.typing as tc
 from visual_graph_datasets.processing.base import ProcessingBase
 from visual_graph_datasets.processing.base import create_processing_module
+from visual_graph_datasets.processing.base import OneHotEncoder
 from visual_graph_datasets.generation.graph import GraphGenerator
 from visual_graph_datasets.visualization.base import create_frameless_figure
 from visual_graph_datasets.visualization.base import layout_node_positions
@@ -329,3 +330,137 @@ def test_mock_processing_get_description_map_basically_works():
     assert 'node_attributes' in description_map
     assert 'edge_attributes' in description_map
 
+
+class TestOneHotEncoder:
+    
+    def test_encode_basically_works(self):
+        """
+        The "encode" method should be able to encode elements from the "values" list into lists 
+        (vectors) of one-hot encoded float values.
+        """
+        encoder = OneHotEncoder(
+            values=['H', 'C', 'O', 'N'],
+            dtype=str,
+        )
+        
+        assert isinstance(encoder, OneHotEncoder)
+        
+        # It should now be possible to encode elements from the "values" list into one-hot 
+        # locations in the output vector
+        encoded_1 = encoder.encode('H')
+        assert isinstance(encoded_1, list)
+        assert len(encoded_1) == 4
+        assert encoded_1 == [1., 0., 0., 0.]
+        
+        # we can test it for a second element from the input set as well to see
+        # if the encoding is working correctly
+        encoded_2 = encoder.encode('C')
+        assert encoded_2 == [0., 1., 0., 0.]
+        
+    def test_decode_basically_works(self):
+        """
+        Using the "decode" vector it should be possible to obtain the corresponding value from the
+        "values" list when providing a one-hot encoded list.
+        """
+        encoder = OneHotEncoder(
+            values=['H', 'C', 'O', 'N'],
+            dtype=str,
+        )
+        
+        decoded_1 = encoder.decode([1., 0., 0., 0.])
+        assert isinstance(decoded_1, str)
+        assert decoded_1 == 'H'
+        
+        decoded_2 = encoder.decode([0., 0., 0., 1.])
+        assert decoded_2 == 'N'
+        
+    def test_unkown_value_basically_works(self):
+        """
+        It should be possible to use the "add_unknown" flag to also cover the umbrella case of any 
+        value that is not explicitly in the "values" list. Also providing a fall back "unknown" value 
+        will return that value in the case of decoding such an unknown one-hot encoded vector.
+        """
+        encoder = OneHotEncoder(
+            values=['H', 'C', 'O', 'N'],
+            dtype=str,
+            add_unknown=True,
+            unknown='UNK'
+        )
+        
+        # it knows H so that should be encoded correctly. Althouth the one-hot encoding 
+        # should now have a length of 5 since there is an additional entry that represents 
+        # the unknown case
+        encoded_1 = encoder.encode('H')
+        assert isinstance(encoded_1, list)
+        assert len(encoded_1) == 5
+        assert encoded_1 == [1., 0., 0., 0., 0.]
+        
+        # it does not know 'S' so that should be encoded as the unknown value as well 
+        # as 'F' which is not in the list of known values either.
+        encoded_2 = encoder.encode('S')
+        assert encoded_2 == [0., 0., 0., 0., 1.]
+        
+        encoded_3 = encoder.encode('F')
+        assert encoded_3 == [0., 0., 0., 0., 1.]
+        
+        # Now when decoding the unknown value it should return the 'unknown' value that was
+        # provided as a fallback
+        decoded_1 = encoder.decode([0., 0., 0., 0., 1.])
+        assert decoded_1 == 'UNK'
+        
+    def test_encode_decode_round_trip_works(self):
+        """
+        It should be possible to encode and decode a value and get back the original input value.
+        """
+        values = ['H', 'C', 'O', 'N']
+        encoder = OneHotEncoder(
+            values=values,
+            dtype=str,
+            add_unknown=True,
+            unknown='UNK'
+        )
+        
+        # we can now test if the encoding and decoding works correctly for all values
+        # in the "values" list. The result should be the same as the input value.
+        for value in values:
+            encoded = encoder.encode(value)
+            decoded = encoder.decode(encoded)
+            
+            assert decoded == value
+        
+        
+    def test_encode_string_basically_works(self):
+        """
+        Using the "encode_string" method it should be possible to simply encode a domain value from 
+        the "values" list into a simple human-readable string representation.
+        """
+        encoder = OneHotEncoder(
+            values=['H', 'C', 'O', 'N'],
+            dtype=str,
+            add_unknown=True,
+            unknown='UNK'
+        )
+        
+        # In the case of a str "values" list this is trivial since those are already string values.
+        string = encoder.encode_string('H')
+        assert isinstance(string, str)
+        assert string == 'H'
+        
+        # However it should also be possible to use non-string values and still get a human readable 
+        # string encoding when additionally passing the "string_values" list.
+        encoder = OneHotEncoder(
+            values=[0, 1, 2, 3],
+            string_values=['zero', 'one', 'two', 'three'],
+            dtype=int,
+            add_unknown=True,
+            unknown='unknown'
+        )
+        
+        # Encoder should work normally
+        encoded = encoder.encode(2)
+        assert encoded == [0., 0., 1., 0., 0.]
+        
+        string = encoder.encode_string(2)
+        assert string == 'two'
+        
+        

@@ -225,7 +225,7 @@ cogiles_grammar = parsimonious.Grammar(
     graph           = (branch / node / anchor / break)*
 
     branch_node     = (break_node / node) branch+
-    anchor_node     = (break_node / node) anchor+
+    anchor_node     = (branch_node / break_node / node) anchor+
     break_node      = break node
 
     branch          = lpar graph rpar
@@ -553,17 +553,17 @@ class CogilesEncoder:
             self.node_adjacency[node_index, neighbor_index] = 0
             self.node_adjacency[neighbor_index, node_index] = 0
 
+            # 06.06.23 - This was a bug; without checking for the visitation status of the neighbor nodes
+            # here, certain nodes in certain configurations were actually duplicated in the resulting
+            # output string representation.
+            if self.node_visited[neighbor_index]:
+                continue
+
             # If the neighbor has an anchor attached to it then connecting to that neighbor is actually
             # relatively easy and just involves adding the corresponding anchor string to the current
             # working string.
             if neighbor_index in self.index_anchor_map:
                 value += f'-{self.index_anchor_map[neighbor_index]}'
-                continue
-
-            # 06.06.23 - This was a bug; without checking for the visitation status of the neighbor nodes
-            # here, certain nodes in certain configurations were actually duplicated in the resulting
-            # output string representation.
-            if self.node_visited[neighbor_index]:
                 continue
 
             # If the neighbor in question has in fact not already been visited then we now need to do so
