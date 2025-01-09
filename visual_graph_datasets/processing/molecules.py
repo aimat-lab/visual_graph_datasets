@@ -4,6 +4,7 @@ This module specifically deals with the processing of *molecular graphs*
 import os
 from collections import OrderedDict
 import typing as t
+from typing import Optional
 
 import numpy as np
 import numpy.linalg as la
@@ -756,7 +757,7 @@ class MoleculeProcessing(ProcessingBase):
             # "symbol_encoder" is an Encoder specifically designed to encode the atom symbols into a 
             # one-hot encoded vector. It has the additional method "encode_string" which encodes the 
             # symbol into a human readable string.
-            if self.symbol_encoder:
+            if hasattr(self, 'symbol_encoder') and self.symbol_encoder:
                 atom_symbol = self.symbol_encoder.encode_string(atom.GetSymbol())
                 node_atoms.append(atom_symbol)
 
@@ -790,7 +791,7 @@ class MoleculeProcessing(ProcessingBase):
             if double_edges_undirected:
                 edge_attributes.append(attributes)
                 
-            if self.bond_encoder:
+            if hasattr(self, 'bond_encoder') and self.bond_encoder:
                 bond_type: str = self.bond_encoder.encode_string(bond.GetBondType())
                 edge_bonds.append(bond_type)
 
@@ -881,7 +882,8 @@ class MoleculeProcessing(ProcessingBase):
                             value: str,
                             width: int,
                             height: int,
-                            additional_returns: t.Optional[dict] = None,
+                            additional_returns: Optional[dict] = None,
+                            reference_mol: Optional[Chem.Mol] = None,
                             **kwargs,
                             ) -> t.Tuple[plt.Figure, np.ndarray]:
         """
@@ -916,7 +918,12 @@ class MoleculeProcessing(ProcessingBase):
             ax=ax,
             mol=mol,
             image_width=width,
-            image_height=height
+            image_height=height,
+            # 29.11.24 - This can optionally be used to control the orientation of the molecule in the 
+            # created visualization. The main molecule will be aligned in the same way the reference 
+            # molecule. This is particularly useful when visualizing many molecules with the same backbone 
+            # to make sure that they have the same principal orientation.
+            reference_mol=reference_mol,
         )
         
         # The "node_positions" which are returned by the above function are values within the axes object

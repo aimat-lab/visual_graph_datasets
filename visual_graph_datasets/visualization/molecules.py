@@ -3,6 +3,7 @@ import re
 import io
 import tempfile
 import typing as t
+from typing import Optional
 
 import cairosvg
 import numpy as np
@@ -10,7 +11,7 @@ import matplotlib.pyplot as plt
 from PIL import Image
 from imageio.v2 import imread
 from rdkit import Chem
-from rdkit.Chem.Draw.rdMolDraw2D import MolDraw2DSVG
+from rdkit.Chem.Draw.rdMolDraw2D import MolDraw2DSVG, MolDrawOptions
 from rdkit.Chem import rdDepictor
 rdDepictor.SetPreferCoordGen(True)
 
@@ -25,6 +26,7 @@ def visualize_molecular_graph_from_mol(ax: plt.Axes,
                                        image_width: 1000,
                                        image_height: 1000,
                                        line_width: int = 5,
+                                       reference_mol: Optional[Chem.Mol] = None,
                                        ) -> t.Tuple[np.ndarray, str]:
     """
     Creates a molecular graph visualization if given the RDKit Mol object ``mol`` and the matplotlib Axes
@@ -48,14 +50,25 @@ def visualize_molecular_graph_from_mol(ax: plt.Axes,
     :param image_width: The pixel width of the resulting image
     :param image_height: The pixel height of the resulting image
     :param line_width: Defines the line width used for the drawing of the bonds
+    :param reference_mol: An optional reference molecule Chem.Mol object which determines the orientation
+        of the main molecule to be visualized. If provided, the main molecule will be aligned to the
+        reference molecule orientation. This is particularly useful when visualizing many molecules with 
+        the same backbone to ensure that they are all oriented in the same way.
 
     :return: A tuple (node_positions, svg_string), where the first element is a numpy array (V, 2) of node
         mpl coordinates of each of the graphs nodes in the visualization on the given Axes and the second
         element is the SVG string from which that visualization was created.
     """
+    if reference_mol is not None:
+        if not reference_mol.GetNumConformers():
+            rdDepictor.Compute2DCoords(reference_mol)
+        rdDepictor.GenerateDepictionMatching2DStructure(mol, reference_mol)
+    
     # To create the visualization of the molecule we are going to use the existing functionality of RDKit
     # which simply takes the Mol object and creates an SVG rendering of it.
     mol_drawer = MolDraw2DSVG(image_width, image_height)
+    options: MolDrawOptions = mol_drawer.drawOptions()
+    
     mol_drawer.SetLineWidth(line_width)
     mol_drawer.DrawMolecule(mol)
     mol_drawer.FinishDrawing()
