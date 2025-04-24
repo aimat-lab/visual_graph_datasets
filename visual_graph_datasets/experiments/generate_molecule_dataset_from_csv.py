@@ -595,10 +595,11 @@ def experiment(e: Experiment):
         additional_graph_data = {'graph_labels': target}
         additional_graph_data = e.apply_hook(
             'additional_graph_data',
-            default=additional_graph_data,
             additional_graph_data=additional_graph_data,
             mol=mol,
             data=data,
+            #
+            default=additional_graph_data,
         )
 
         # 04.12.23

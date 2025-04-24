@@ -1,53 +1,78 @@
 [build-system]
-requires = ["poetry-core>=1.2.0b2"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tool.poetry]
+[project]
+# Project Metadata
+# ================
 name = "visual_graph_datasets"
 version = "0.15.7"
 description = "Datasets for the training of graph neural networks (GNNs) and subsequent visualization of attributional explanations of XAI methods"
-license = "MIT"
-authors = ["awa59kst120df <awa59kst120df@gmail.com>"]
-maintainers = ["awa59kst120df <awa59kst120df@gmail.com>"]
 readme = "README.rst"
-keywords = ["graph neural networks", "datasets", "explainable AI"]
-packages = [
-    { include = "visual_graph_datasets" }
+authors = [
+    { name = "Jonas Teufel", email = "jonseb1998@gmail.com" },
 ]
-include = [
-    "visual_graph_datasets/VERSION",
+maintainers = [
+    { name = "Jonas Teufel", email = "jonseb1998@gmail.com" },
 ]
-exclude = [
-    "dist",
-    "venv",
-    "visual_graph_datasets/experiments/assets",
-    "visual_graph_datasets/experiments/results",
-    "visual_graph_datasets/examples/results",
+license = { text = "MIT License" }
+keywords = [
+    "graph neural networks",
+    "datasets",
+    "explainable AI",
+]
+requires-python = ">=3.9,<=3.13"
+
+# Project Dependencies
+# ====================
+dependencies = [
+    "poetry-bumpversion>=0.3.0",
+    "rich_click>=1.8.3",
+    "jinja2>=3.0.3",
+    "numpy>=1.22.0,<2.0.0",
+    "matplotlib>=3.5.3",
+    "psutil>=5.7.2",
+    "pytest>=7.2.0",
+    "orjson>=3.8.0",
+    "pyyaml>=0.6.0",
+    "pycomex>=0.14.0",
+    "networkx>=2.8.8",
+    "scipy>=1.10.1",
+    "imageio>=2.22.4",
+    "cairosvg>=2.5.0",
+    "rdkit>=2022.9.0",
+    "parsimonious>=0.10.0"
 ]
 
-[tool.poetry.scripts]
-vgd = 'visual_graph_datasets.cli:cli'
+# Executable Scripts
+# ==================
+[project.scripts]
+vgd = "visual_graph_datasets.cli:cli"
 
-[tool.poetry.dependencies]
-python = ">=3.9,<=3.16"
-poetry-bumpversion = ">=0.3.0"
-# click = ">=8.1.7,<8.2.0"
-rich_click = ">=1.8.3"
-jinja2 = ">=3.0.3"
-numpy = ">=1.22.0,<2.0.0"
-matplotlib = ">=3.5.3"
-psutil = ">=5.7.2"
-pytest = ">=7.2.0"
-orjson = ">=3.8.0"
-pyyaml = ">=0.6.0"
-pycomex = ">=0.15.0"
-networkx = ">=2.8.8"
-scipy = ">=1.10.1"
-imageio = ">=2.22.4"
-cairosvg = ">=2.5.0"
-rdkit = ">=2022.9.0"
-parsimonious = ">=0.10.0"
+[tool.hatch.build]
+skip-excluded-dirs = true
 
-[tool.poetry_bumpversion.file."visual_graph_datasets/VERSION"]
+[tool.hatch.build.targets.wheel]
+packages = ["visual_graph_datasets"]
+
+[tool.bumpversion]
+current_version = "0.15.7"
+parse = "(?<![=<>])(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)"
+serialize = ["{major}.{minor}.{patch}"]
 search = "{current_version}"
 replace = "{new_version}"
+regex = true
+ignore_missing_version = true
+tag = false
+sign_tags = false
+tag_name = "v{new_version}"
+tag_message = "Bump version: {current_version} → {new_version}"
+allow_dirty = true
+commit = false
+message = "Bump version: {current_version} → {new_version}"
+commit_args = ""
+files = [
+    { filename = "pyproject.toml", search = "version = \"{current_version}\"", replace = "version = \"{new_version}\"" },
+    { filename = "README.rst" },
+    { filename = "visual_graph_datasets/VERSION" },
+]
