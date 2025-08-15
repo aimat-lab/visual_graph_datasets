@@ -68,8 +68,11 @@ def visualize_molecular_graph_from_mol(ax: plt.Axes,
     # which simply takes the Mol object and creates an SVG rendering of it.
     mol_drawer = MolDraw2DSVG(image_width, image_height)
     options: MolDrawOptions = mol_drawer.drawOptions()
+    # options.maxFontSize = 20
+    # options.minFontSize = 20
     
-    mol_drawer.SetLineWidth(line_width)
+    mol_drawer.SetLineWidth(0.5 * line_width)
+    
     mol_drawer.DrawMolecule(mol)
     mol_drawer.FinishDrawing()
     svg_string = mol_drawer.GetDrawingText()

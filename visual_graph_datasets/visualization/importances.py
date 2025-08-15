@@ -483,6 +483,8 @@ def create_combined_importances_pdf(graph_list: t.List[tc.GraphDict],
         channel_limit_map = {}
         for channel_index in range(num_channels):
             value = np.percentile([fid[channel_index] for fid in graph_fidelity_list], 90)
+            # later on the the value needs to be larger than zero at least
+            value = max(value, 1e-6)
             channel_limit_map[channel_index] = value
     
     with PdfPages(output_path) as pdf:
@@ -500,6 +502,8 @@ def create_combined_importances_pdf(graph_list: t.List[tc.GraphDict],
                 squeeze=False,
             )
             ax = rows[0][0]
+            fig.patch.set_alpha(0)
+            ax.patch.set_alpha(0)
             
             # This function will correctly draw the graph image from the file system to the axis in such a way that 
             # the node positions array matches the pixel coordinates in the axis.
@@ -577,3 +581,8 @@ def create_combined_importances_pdf(graph_list: t.List[tc.GraphDict],
 
             pdf.savefig(fig)
             plt.close(fig)
+            
+            # ~ if we have a cache_path given then we want to save the individual raw images to this 
+            #   path as well. This can be useful if the images are expensive to compute.
+            file_path = os.path.join(cache_path, f'{index}.png')
+            fig.savefig(file_path)

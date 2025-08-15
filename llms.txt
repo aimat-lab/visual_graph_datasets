@@ -1,0 +1,213 @@
+# Visual Graph Datasets - AI Integration Guide 
+
+## Project Overview
+
+`visual_graph_datasets` is a package which primarily defines a dataset format which is specifically designed for the training and evaluation of *graph neural networks* (GNNs) with a focus on *explainable AI* (XAI) methods. The package includes a set of tools for loading, processing, and visualizing graph datasets, making it easier to work with complex graph structures in machine learning tasks.
+
+More specifically, the core feature of this format is the processing of graph elements from their domain specific string representation (e.g. SMILES for molecules) into graph dictionary objects which can be easily used as the input for GNN inference and training. In addition to this graph structure - which is saved in a json file - there is also a PNG file for each graph structure which contains a domain specific visualization of the graph. This is useful for the visualization of the explanations later on. Each graph structure also contains the pixel coordinates of the individual nodes in those images.
+
+## Quick Start
+
+### Processing Graphs
+
+At the center of the `visual_graph_datasets` package are the `Processing` classes, which define how to process the raw data into the graph dictionary and visualization formats. There is a base class that defines an interface and then there are several specific implementation for domain specific graph formats such as molecular graphs.
+
+Each `Processing` class has the following methods:
+
+- `process(value: str) -> dict`: Receives the string representation of the graph and outputs the dictionary representation.
+- `visualize_as_figure(value: str) -> Figure`: Receives the string representation of the graph and outputs a matplotlib figure that visualizes the graph.
+
+```python
+import matplotlib.pyplot as plt
+from visual_graph_datasets.processing.molecules import MoleculeProcessing
+
+processing = MoleculeProcessing()
+
+# --- processing a graph ---
+# This method will turnt the domain representation of the graph into a dictionary structure that 
+# contains all the information about the graph in a format that can be used for GNN inference and training.
+value = "CCO"  # Example SMILES string for ethanol
+graph: dict = processing.process(value)
+
+# --- visualizing a graph ---
+# This method will create the matplotlib figure with the graph visualization and 
+# return the node positions (in the matplotlib coordinate system) as the second return value.
+# The figure will not have axes or a background. It will only be the graph in front of a 
+# fully transparent background.
+fig, node_positions = processing.visualize_as_figure(value, width=1000, height=1000)
+plt.show()
+```
+
+### Saving and Loading Datasets
+
+The package provides `VisualGraphDatasetWriter` and `VisualGraphDatasetReader` classes for efficiently saving and loading VGD datasets.
+
+**Saving Datasets with VisualGraphDatasetWriter:**
+
+```python
+import os
+from visual_graph_datasets.data import VisualGraphDatasetWriter
+from visual_graph_datasets.processing.molecules import MoleculeProcessing
+
+# Create a writer instance with optional chunking
+dataset_path = "/path/to/dataset"
+writer = VisualGraphDatasetWriter(
+    path=dataset_path,
+    chunk_size=1000  # Optional: splits dataset into chunks of 1000 elements
+)
+
+# Process molecules and save them
+processing = MoleculeProcessing()
+smiles_list = ["CCO", "CC(C)O", "c1ccccc1"]  # Example SMILES
+
+for i, smiles in enumerate(smiles_list):
+    try:
+        # Process the molecule
+        graph_dict = processing.process(smiles)
+        fig, node_positions = processing.visualize_as_figure(smiles, width=1000, height=1000)
+        
+        # Create metadata dictionary
+        metadata = {
+            'index': i,
+            'target': [1.0],  # Example target value
+            'graph': graph_dict
+        }
+        
+        # Write to dataset (index, metadata, figure)
+        writer.write(i, metadata, fig)
+        
+    except Exception as e:
+        print(f"Failed to process {smiles}: {e}")
+```
+
+**Loading Datasets with VisualGraphDatasetReader:**
+
+```python
+from visual_graph_datasets.data import VisualGraphDatasetReader, load_visual_graph_dataset
+
+# Method 1: Using the reader class directly
+reader = VisualGraphDatasetReader(path=dataset_path)
+index_data_map = reader.read()  # Returns dict with {index: element_data}
+
+# Method 2: Using the convenience function
+metadata_map, index_data_map = load_visual_graph_dataset(dataset_path)
+
+# Access individual elements
+for index, element_data in index_data_map.items():
+    metadata = element_data['metadata']
+    image_path = element_data['image_path']
+    
+    # Access graph structure
+    graph = metadata['graph']
+    node_attributes = graph['node_attributes']  # numpy array
+    edge_indices = graph['edge_indices']        # numpy array
+    node_positions = graph['node_positions']    # pixel coordinates
+    
+    # Access target values
+    target = metadata['target']
+```
+
+**Loading Individual Elements:**
+
+```python
+from visual_graph_datasets.data import load_visual_graph_element
+
+# Load a single element by name
+element_data = load_visual_graph_element(path=dataset_path, name="0000042")
+metadata = element_data['metadata']
+image_path = element_data['image_path']
+```
+
+**Using Processing Classes with Writer:**
+
+The processing classes have a `create` method that combines processing and writing:
+
+```python
+processing = MoleculeProcessing()
+
+# This processes the SMILES and directly writes to the dataset
+processing.create(
+    index=0,
+    value="CCO",
+    writer=writer,
+    additional_graph_data={'custom_feature': [1, 2, 3]},
+    additional_metadata={'source': 'experiment_1'}
+)
+```
+
+## Graph Structure
+
+The visual graph dataset graph structure is a dictionary that contains the following keys for sure.
+
+- `node_indices`: A numpy array of shape `(num_nodes,)` containing the indices of the nodes in the graph.
+- `node_attributes`: A numpy array of shape `(num_nodes, num_node_features)` containing the attributes of the nodes in the graph.
+- `edge_indices`: A numpy array of shape `(2, num_edges)` containing the indices of the edges in the graph, where the first row contains the source node indices and the second row contains the target node indices.
+- `edge_attributes`: A numpy array of shape `(num_edges, num_edge_features)` containing the attributes of the edges in the graph.
+- `node_positions`: A numpy array of shape `(num_nodes, 2)` containing the pixel coordinates of the nodes in the graph visualization.
+- `graph_labels`: A numpy array of shape `(num_labels,)` containing the labels for the graphs, if applicable. 
+
+This dictionary structure is dynamic and can contain the following additional keys:
+
+- `node_importances`: A numpy array of shape `(num_nodes, num_channels)` containing the importance explanation scores for each node and the chosen number of explanation channels.
+- `edge_importances`: A numpy array of shape `(num_edges, num_channels)` containing the importance explanation scores for each edge and the chosen number of explanation channels.
+
+## Project Structure
+
+The `visual_graph_datasets` package is organized into several key modules:
+
+### Core Modules
+
+- **`visual_graph_datasets/data.py`**: Core data management functionality including `VisualGraphDatasetReader` and `VisualGraphDatasetWriter` classes for loading and saving VGD datasets.
+
+- **`visual_graph_datasets/config.py`**: Configuration management using YAML files stored in `$HOME/.visual_graph_datasets/config.yaml`.
+
+- **`visual_graph_datasets/cli.py`**: Command-line interface for downloading datasets, listing available datasets, and managing configuration.
+
+### Processing Pipeline
+
+- **`visual_graph_datasets/processing/base.py`**: Abstract base classes and interfaces for all processing implementations.
+
+- **`visual_graph_datasets/processing/molecules.py`**: `MoleculeProcessing` class for converting SMILES strings into graph dictionaries and molecular visualizations using RDKit.
+
+- **`visual_graph_datasets/processing/colors.py`**: `ColorProcessing` class for handling color graph datasets.
+
+- **`visual_graph_datasets/processing/generic.py`**: Generic graph processing utilities.
+
+### Visualization
+
+- **`visual_graph_datasets/visualization/base.py`**: Core visualization utilities including `create_frameless_figure()` and `draw_image()` functions.
+
+- **`visual_graph_datasets/visualization/importances.py`**: Functions for visualizing attributional explanations including `plot_node_importances_border()` and `plot_edge_importances_border()`.
+
+- **`visual_graph_datasets/visualization/molecules.py`**: Molecular-specific visualization utilities.
+
+- **`visual_graph_datasets/visualization/colors.py`**: Color graph visualization utilities.
+
+### Dataset Generation
+
+- **`visual_graph_datasets/experiments/`**: Contains experiment scripts for creating datasets:
+  - `generate_molecule_dataset_from_csv.py`: Base experiment for converting CSV files with SMILES strings into VGD datasets
+  - Various specific implementations like `generate_molecule_dataset_from_csv__aqsoldb.py`
+  - `generate_mock.py`: Creates synthetic test datasets
+
+- **`visual_graph_datasets/generation/`**: Synthetic data generation utilities for colors and graphs.
+
+### Utilities
+
+- **`visual_graph_datasets/util.py`**: Common utility functions and constants.
+
+- **`visual_graph_datasets/web.py`**: File sharing and remote dataset download functionality.
+
+- **`visual_graph_datasets/graph.py`**: Graph manipulation utilities.
+
+### Testing
+
+- **`tests/`**: Comprehensive test suite with test files for each major module and example datasets in `tests/assets/`.
+
+### Dataset Format
+
+Each VGD dataset is stored as a folder containing:
+- `*.json` files: Graph metadata and structure for each element
+- `*.png` files: Canonical visualizations for each element  
+- `.meta.yml`: Dataset-level metadata
+- `process.py`: Standalone processing module for the dataset

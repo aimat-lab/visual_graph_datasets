@@ -125,6 +125,8 @@ DATASET_META: t.Optional[dict] = {
     }
 }
 
+__DEBUG__ = False
+
 experiment = Experiment.extend(
     'generate_molecule_dataset_from_csv.py',
     base_path=folder_path(__file__),
