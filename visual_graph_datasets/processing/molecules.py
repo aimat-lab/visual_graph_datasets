@@ -884,6 +884,7 @@ class MoleculeProcessing(ProcessingBase):
                             height: int,
                             additional_returns: Optional[dict] = None,
                             reference_mol: Optional[Chem.Mol] = None,
+                            line_width: float = 5.0,
                             **kwargs,
                             ) -> t.Tuple[plt.Figure, np.ndarray]:
         """
@@ -919,6 +920,7 @@ class MoleculeProcessing(ProcessingBase):
             mol=mol,
             image_width=width,
             image_height=height,
+            line_width=line_width,
             # 29.11.24 - This can optionally be used to control the orientation of the molecule in the 
             # created visualization. The main molecule will be aligned in the same way the reference 
             # molecule. This is particularly useful when visualizing many molecules with the same backbone 
