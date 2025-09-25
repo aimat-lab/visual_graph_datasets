@@ -74,8 +74,8 @@ class MockProcessing(ProcessingBase):
         # https://stackoverflow.com/questions/35355930/matplotlib-figure-to-image-as-a-numpy-array
         canvas = FigureCanvas(fig)
         canvas.draw()
-        array = np.frombuffer(canvas.tostring_rgb(), dtype='uint8')
-        array = array.reshape((height, width, 3))
+        array = np.frombuffer(canvas.buffer_rgba(), dtype='uint8')
+        array = array.reshape((height, width, 4))[:, :, :3]  # Remove alpha channel
         return array
 
     def create(self,

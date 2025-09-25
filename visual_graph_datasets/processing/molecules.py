@@ -733,13 +733,13 @@ class MoleculeProcessing(ProcessingBase):
         # First of all we iterate over all the atoms in the molecule and apply all the callback
         # functions on the atom objects which then calculate the actual attribute values for the final
         # node attribute vector.
-        node_indices: list[int] = []
-        node_attributes: list[list[float]] = []
+        node_indices: t.List[int] = []
+        node_attributes: t.List[t.List[float]] = []
         # Here we want to maintain a list of the the string atom symbols for each of the atom nodes as 
         # we process the molecule graph structure.
         # The goal is to have some kind of information such that a human could reconstruct 
         # the molecule from the graph structure later on as well.
-        node_atoms: list[str] = []
+        node_atoms: t.List[str] = []
         for atom in atoms:
             node_indices.append(atom.GetIdx())
 
@@ -763,14 +763,14 @@ class MoleculeProcessing(ProcessingBase):
 
         bonds = mol.GetBonds()
         # Next up is the same with the bonds
-        edge_indices: list[tuple[int, int]] = []
-        edge_attributes: list[list[float]] = []
+        edge_indices: t.List[t.Tuple[int, int]] = []
+        edge_attributes: t.List[t.List[float]] = []
         # Here we want to maintain a list of the bond types for each of the edge nodes as we process the
         # molecule graph structure. More specifically, we want to safe a human readable string representation 
         # of the bond type. 
         # The goal is to have some kind of information such that a human could reconstruct 
         # the molecule from the graph structure later on as well.
-        edge_bonds: list[str] = []
+        edge_bonds: t.List[str] = []
         for bond in bonds:
             i = int(bond.GetBeginAtomIdx())
             j = int(bond.GetEndAtomIdx())
@@ -794,6 +794,8 @@ class MoleculeProcessing(ProcessingBase):
             if hasattr(self, 'bond_encoder') and self.bond_encoder:
                 bond_type: str = self.bond_encoder.encode_string(bond.GetBondType())
                 edge_bonds.append(bond_type)
+                if double_edges_undirected:
+                    edge_bonds.append(bond_type)
 
         # Then there is also the option to add global graph attributes. The callbacks for this kind of
         # attribute take the entire molecule object as an argument rather than just atom or bond
@@ -971,8 +973,8 @@ class MoleculeProcessing(ProcessingBase):
         # https://stackoverflow.com/questions/35355930/matplotlib-figure-to-image-as-a-numpy-array
         canvas = FigureCanvas(fig)
         canvas.draw()
-        array = np.frombuffer(canvas.tostring_rgb(), dtype='uint8')
-        array = array.reshape((height, width, 3))
+        array = np.frombuffer(canvas.buffer_rgba(), dtype='uint8')
+        array = array.reshape((height, width, 4))[:, :, :3]  # Remove alpha channel
 
         plt.close(fig)
 

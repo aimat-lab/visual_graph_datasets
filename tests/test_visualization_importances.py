@@ -20,7 +20,7 @@ from visual_graph_datasets.visualization.importances import create_importances_p
 
 from .util import ASSETS_PATH, ARTIFACTS_PATH
 
-mpl.use('TkAgg')
+mpl.use('Agg')
 
 
 def test_plot_importances_background_basically_works():
@@ -119,7 +119,7 @@ def test_create_importances_pdf_basically_works():
     # We are going to test the importance visualization using the mock dataset
     dataset_path = os.path.join(ASSETS_PATH, 'mock')
     _, index_data_map = load_visual_graph_dataset(dataset_path)
-    example_indices = random.sample(index_data_map.keys(), k=num_examples)
+    example_indices = random.sample(list(index_data_map.keys()), k=num_examples)
 
     data_list = [data for index, data in index_data_map.items() if index in example_indices]
 

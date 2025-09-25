@@ -442,3 +442,16 @@ Bugfixes
   human-readable strings.
 - Added an additional ``encoder`` class attribute to the ``ColorProcessing`` class which can be used to encode 
   the (r,g,b) color values of the nodes and edges into a human-readable string representation.
+
+0.17.0 - 25.10.2025
+-------------------
+
+Dependencies
+
+- Updated the list of dependencies as well as their version requirements such that the minimum 
+  version for the `visual_graph_datasets` package is now Python 3.8 where it was previously 3.10
+
+Tests
+
+- Added a `noxfile.py` and implemented the unittests to be automatically executed for all supported
+  python versions using nox.

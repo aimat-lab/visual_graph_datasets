@@ -3,10 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-# Project Metadata
-# ================
+# --- project metadata ---
 name = "visual_graph_datasets"
-version = "0.15.7"
+version = "0.17.0"
 description = "Datasets for the training of graph neural networks (GNNs) and subsequent visualization of attributional explanations of XAI methods"
 readme = "README.rst"
 authors = [
@@ -20,11 +19,35 @@ keywords = [
     "graph neural networks",
     "datasets",
     "explainable AI",
+    "machine learning",
+    "visualization",
+    "GNN",
+    "XAI",
+    "molecular",
+    "networkx",
+    "rdkit",
 ]
-requires-python = ">=3.9,<=3.13"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Visualization",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+requires-python = ">=3.8,<=3.14"
 
-# Project Dependencies
-# ====================
+# --- project dependencies ---
 dependencies = [
     "poetry-bumpversion>=0.3.0",
     "rich_click>=1.8.3",
@@ -44,8 +67,7 @@ dependencies = [
     "parsimonious>=0.10.0"
 ]
 
-# Executable Scripts
-# ==================
+# --- executable scripts ---
 [project.scripts]
 vgd = "visual_graph_datasets.cli:cli"
 
@@ -55,8 +77,38 @@ skip-excluded-dirs = true
 [tool.hatch.build.targets.wheel]
 packages = ["visual_graph_datasets"]
 
+# --- Ruff configuration ---
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "COM812",  # Missing trailing comma (enforces trailing commas)
+]
+ignore = [
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # too complex
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+"tests/*" = ["B011"]
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+
+# --- bumpversion configuration ---
 [tool.bumpversion]
-current_version = "0.15.7"
+current_version = "0.17.0"
 parse = "(?<![=<>])(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)"
 serialize = ["{major}.{minor}.{patch}"]
 search = "{current_version}"

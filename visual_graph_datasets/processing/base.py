@@ -132,7 +132,7 @@ class OneHotEncoder(EncoderBase, StringEncoderMixin):
                  add_unknown: bool = False,
                  unknown: t.Any = 'H',
                  dtype: type = float,
-                 string_values: typ.Optional[list[str]] = None,
+                 string_values: typ.Optional[t.List[str]] = None,
                  use_soft_decode: bool = False,
                  ):
         EncoderBase.__init__(self)
@@ -148,9 +148,9 @@ class OneHotEncoder(EncoderBase, StringEncoderMixin):
         # it is unnecessary to define a separate list and we can just use the "values" list as the string 
         # representation as well.
         if string_values is None:
-            self.string_values: list[str] = [str(v) for v in values]
+            self.string_values: t.List[str] = [str(v) for v in values]
         else:
-            self.string_values: list[str] = string_values
+            self.string_values: t.List[str] = string_values
 
     def __call__(self, value: t.Any, *args, **kwargs) -> t.List[float]:
         return self.encode(value)
@@ -913,8 +913,8 @@ class ProcessingBase(click.MultiCommand):
         # https://stackoverflow.com/questions/35355930/matplotlib-figure-to-image-as-a-numpy-array
         canvas = FigureCanvas(figure)
         canvas.draw()
-        array = np.frombuffer(canvas.tostring_rgb(), dtype='uint8')
-        array = array.reshape((height, width, 3))
+        array = np.frombuffer(canvas.buffer_rgba(), dtype='uint8')
+        array = array.reshape((height, width, 4))[:, :, :3]  # Remove alpha channel
 
         return array
 

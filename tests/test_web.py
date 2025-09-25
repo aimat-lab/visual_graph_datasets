@@ -11,6 +11,12 @@ from visual_graph_datasets.testing import IsolatedConfig
 
 from .util import LOG
 
+# Skip network tests by default - they can be run with VGD_RUN_NETWORK=1 pytest
+pytestmark = pytest.mark.skipif(
+    os.environ.get("VGD_RUN_NETWORK", "0") != "1",
+    reason="Network tests skipped by default. Set VGD_RUN_NETWORK=1 to run them."
+)
+
 
 def test_ensure_dataset_dataset_not_found_error():
     """

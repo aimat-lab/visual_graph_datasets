@@ -144,7 +144,7 @@ class ColorProcessing(ProcessingBase):
         # graph dict representation.
         if self.encoder:
             
-            node_colors: list[str] = []
+            node_colors: t.List[str] = []
             for attr in graph['node_attributes']:
                 node_color: str = self.encoder.encode_string(attr)
                 node_colors.append(node_color)

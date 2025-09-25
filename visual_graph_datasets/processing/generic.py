@@ -86,7 +86,7 @@ class GenericProcessing(ProcessingBase):
                             width: int = 1000,
                             height: int = 1000,
                             layout_cb: t.Callable = nx.spring_layout,
-                            ) -> tuple[plt.Figure, np.ndarray]:
+                            ) -> t.Tuple[plt.Figure, np.ndarray]:
         """
         This method will visualize the given ``value`` graph representation as a matplotlib figure with a 
         ``width`` and ``height`` in pixels. The graph will be visualized using the networkx library and the layouting

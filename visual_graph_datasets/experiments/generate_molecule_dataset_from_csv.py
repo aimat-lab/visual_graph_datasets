@@ -61,6 +61,7 @@ import datetime
 import multiprocessing
 import typing as t
 from collections import defaultdict
+from typing import Set
 
 import rdkit.Chem.Descriptors
 from rdkit.rdBase import BlockLogs
@@ -409,7 +410,7 @@ experiment = Experiment(
 )
 
 @experiment.hook('load_blacklist')
-def load_blacklist(e: Experiment) -> set[int]:
+def load_blacklist(e: Experiment) -> Set[int]:
     """
     This hook loads the blacklist of indices from the given file path and returns it as a set of integers.
     This set of integers defines all the indices of the target dataset that should be skipped during processing.
@@ -505,7 +506,7 @@ def experiment(e: Experiment):
     #       This hook is supposed to load the blacklist of indices from the given file path and return it as
     #       a set of integers. This set of integers defines all the indices of the target dataset that should
     #       be skipped during processing.
-    blacklist_indices: set[int] = e.apply_hook('load_blacklist')
+    blacklist_indices: Set[int] = e.apply_hook('load_blacklist')
     e.log(f'loaded blacklist consisting of {len(blacklist_indices)} indices')
 
     # -- Processing the dataset into visual graph dataset --
