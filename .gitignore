@@ -4,6 +4,7 @@ visual_graph_datasets/examples/results/*
 
 # exclude experiment assets
 visual_graph_datasets/experiments/assets/*
+!visual_graph_datasets/experiments/assets/synth2_subset.csv
 
 # exclude python cache
 **/__pycache__/
