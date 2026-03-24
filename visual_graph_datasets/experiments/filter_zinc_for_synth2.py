@@ -138,6 +138,8 @@ def main():
 
     skipped_invalid = 0
     skipped_sanitize = 0
+    skipped_disconnected = 0
+    skipped_charged = 0
     skipped_none = 0
     skipped_multi = 0
     total_rows = 0
@@ -168,6 +170,16 @@ def main():
             mol = sanitize_mol(mol)
             if mol is None:
                 skipped_sanitize += 1
+                continue
+
+            # Skip disconnected molecules (multiple fragments)
+            if len(Chem.GetMolFrags(mol)) > 1:
+                skipped_disconnected += 1
+                continue
+
+            # Skip molecules with any charged atoms
+            if any(atom.GetFormalCharge() != 0 for atom in mol.GetAtoms()):
+                skipped_charged += 1
                 continue
 
             matches = [name for name, pat in compiled.items() if mol.HasSubstructMatch(pat)]
@@ -209,6 +221,8 @@ def main():
     print(f'Total rows processed:          {total_rows:,}')
     print(f'Invalid SMILES (skipped):      {skipped_invalid:,}')
     print(f'Sanitization failed (skipped): {skipped_sanitize:,}')
+    print(f'Disconnected (skipped):        {skipped_disconnected:,}')
+    print(f'Charged atoms (skipped):       {skipped_charged:,}')
     print(f'No matching groups (skipped):  {skipped_none:,}')
     print(f'Multiple groups (skipped):     {skipped_multi:,}')
     print(f'Total exclusive molecules:     {total_exclusive:,}')
