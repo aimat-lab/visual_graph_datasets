@@ -37,17 +37,25 @@ def multiply(a: int, b: int) -> int:
 
 ## Development Commands
 
+### Python Environment
+
+Always use the project's virtual environment Python:
+
+```bash
+.venv/bin/python
+```
+
 ### Testing
 
 ```bash
 # Run all tests
-python -m pytest tests/
+.venv/bin/python -m pytest tests/
 
 # Run specific test file
-python -m pytest tests/test_<module_name>.py
+.venv/bin/python -m pytest tests/test_<module_name>.py
 
 # Run tests with verbose output
-python -m pytest tests/ -v
+.venv/bin/python -m pytest tests/ -v
 ```
 
 ### Package Installation
